@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  
+  /* Primary */
+  --color-primary: #c3c0ff;
+  --color-on-primary: #1d00a5;
+  --color-primary-container: #4f46e5;
+  --color-on-primary-container: #dad7ff;
+  
+  /* Secondary */
+  --color-secondary: #89ceff;
+  --color-on-secondary: #00344d;
+  --color-secondary-container: #00a2e6;
+  --color-on-secondary-container: #00344e;
+  
+  /* Tertiary */
+  --color-tertiary: #c0c1ff;
+  --color-on-tertiary: #1000a9;
+  --color-tertiary-container: #4b4dd8;
+  --color-on-tertiary-container: #d9d8ff;
+  
+  /* Neutral/Surface */
+  --color-background: #0b1326;
+  --color-on-background: #dae2fd;
+  --color-surface: #0b1326;
+  --color-on-surface: #dae2fd;
+  --color-surface-variant: #2d3449;
+  --color-on-surface-variant: #c7c4d8;
+  --color-outline: #918fa1;
+  --color-outline-variant: #464555;
+  
+  /* Container variants */
+  --color-surface-container-lowest: #060e20;
+  --color-surface-container-low: #131b2e;
+  --color-surface-container: #171f33;
+  --color-surface-container-high: #222a3d;
+  --color-surface-container-highest: #2d3449;
+
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+
+  /* Typography shortcuts from mockup */
+  --font-size-headline-lg: 32px;
+  --line-height-headline-lg: 40px;
+
+  --font-size-headline-md: 24px;
+  --line-height-headline-md: 32px;
+
+  --font-size-label-sm: 14px;
+  --line-height-label-sm: 20px;
+  
+  --font-size-code-xs: 12px;
+  --line-height-code-xs: 16px;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-on-background antialiased font-sans transition-colors duration-300;
+  }
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
