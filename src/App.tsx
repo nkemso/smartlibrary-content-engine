@@ -3,8 +3,43 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from 'react';
+import { useState, Component } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+
+// ---------- Error boundary (catches render crashes) ----------
+class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError: boolean; error: any }> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div
+          style={{
+            padding: '2rem',
+            color: '#fff',
+            background: '#0b0f19',
+            minHeight: '100vh',
+            fontFamily: 'Inter, sans-serif',
+          }}
+        >
+          <h1 style={{ color: '#f87171' }}>App Crash</h1>
+          <pre style={{ whiteSpace: 'pre-wrap', background: '#1e293b', padding: '1rem', borderRadius: '8px' }}>
+            {this.state.error?.stack || String(this.state.error)}
+          </pre>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+// ------------------------------------------------------------------
 
 const TopAppBar = () => (
   <header className="fixed top-0 left-0 w-full h-16 bg-slate-950/80 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-6 z-40">
@@ -13,9 +48,9 @@ const TopAppBar = () => (
       <span className="font-sans text-lg font-black tracking-tight text-indigo-500">SmartLibrary</span>
     </div>
     <div className="w-8 h-8 rounded-full overflow-hidden border border-slate-800 shadow-sm cursor-pointer">
-      <img 
-        alt="User Profile" 
-        className="w-full h-full object-cover" 
+      <img
+        alt="User Profile"
+        className="w-full h-full object-cover"
         src="https://lh3.googleusercontent.com/aida-public/AB6AXuDfdXKZoa7oyP9CDaUHvMjW0NUJYvgJcZvDU6hHu69bNknTDumc3yRM5WjfH6QLKeRVzzivEipOIPe8vEp1Pv1Ep3Xzp4MRr4q1UddU6reuufSOCU0Fe7wZAMPWDizKAS9Lc1BCdsG5W8wHoGuVWgns4N6ufsXKHEy5mPvSzl_ntyvUyW6oErCXmFri8kXn5jjRkSD-CnmNs0KFbP_2ul_VoXWOkW6ldvfAoEUlhFEDj1VRgnc7i17fc9YowWncuWdX9jx90yt_jhw"
       />
     </div>
@@ -23,7 +58,7 @@ const TopAppBar = () => (
 );
 
 const FAB = () => (
-  <motion.button 
+  <motion.button
     initial={{ scale: 0, opacity: 0 }}
     animate={{ scale: 1, opacity: 1 }}
     whileHover={{ scale: 1.1 }}
@@ -34,12 +69,12 @@ const FAB = () => (
   </motion.button>
 );
 
-const BottomNav = ({ activeTab, setActiveTab }: { activeTab: string, setActiveTab: (t: string) => void }) => {
+const BottomNav = ({ activeTab, setActiveTab }: { activeTab: string; setActiveTab: (t: string) => void }) => {
   const tabs = [
     { id: 'dashboard', icon: 'dashboard', label: 'Dashboard' },
     { id: 'chat', icon: 'forum', label: 'Chat Engine' },
     { id: 'library', icon: 'folder_managed', label: 'Library' },
-    { id: 'admin', icon: 'admin_panel_settings', label: 'Admin Panel' }
+    { id: 'admin', icon: 'admin_panel_settings', label: 'Admin Panel' },
   ];
 
   return (
@@ -52,10 +87,12 @@ const BottomNav = ({ activeTab, setActiveTab }: { activeTab: string, setActiveTa
             activeTab === tab.id ? 'text-primary' : 'text-on-surface-variant hover:text-on-surface'
           }`}
         >
-          <div className={`w-12 h-8 rounded-full flex items-center justify-center mb-0.5 transition-colors ${
-            activeTab === tab.id ? 'bg-primary-container/20' : ''
-          }`}>
-            <span 
+          <div
+            className={`w-12 h-8 rounded-full flex items-center justify-center mb-0.5 transition-colors ${
+              activeTab === tab.id ? 'bg-primary-container/20' : ''
+            }`}
+          >
+            <span
               className="material-symbols-outlined"
               style={{ fontVariationSettings: `'FILL' ${activeTab === tab.id ? 1 : 0}` }}
             >
@@ -70,7 +107,7 @@ const BottomNav = ({ activeTab, setActiveTab }: { activeTab: string, setActiveTa
 };
 
 const DashboardContent = () => (
-  <motion.div 
+  <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.5 }}
@@ -83,9 +120,9 @@ const DashboardContent = () => (
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
           <span className="material-symbols-outlined text-outline group-focus-within:text-primary transition-colors">search</span>
         </div>
-        <input 
-          className="w-full bg-surface-container-low border border-outline-variant text-on-surface text-base rounded-xl pl-10 pr-10 py-3 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm placeholder:text-outline backdrop-blur-sm" 
-          placeholder="Semantic search queries..." 
+        <input
+          className="w-full bg-surface-container-low border border-outline-variant text-on-surface text-base rounded-xl pl-10 pr-10 py-3 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm placeholder:text-outline backdrop-blur-sm"
+          placeholder="Semantic search queries..."
           type="text"
         />
         <div className="absolute inset-y-0 right-0 pr-2 flex items-center">
@@ -183,33 +220,31 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
 
   return (
-    <div className="min-h-screen bg-background text-on-background pb-32">
-      <TopAppBar />
-      
-      <main className="pt-24 px-4 max-w-2xl mx-auto">
-        <AnimatePresence mode="wait">
-          {activeTab === 'dashboard' && (
-            <DashboardContent />
-          )}
-          {activeTab !== 'dashboard' && (
-            <motion.div
-              key="placeholder"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="flex flex-col items-center justify-center h-[50vh] text-on-surface-variant"
-            >
-              <span className="material-symbols-outlined text-6xl mb-4 opacity-20">construction</span>
-              <p className="text-lg font-medium opacity-50 underline decoration-primary underline-offset-8">
-                {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} View Under Construction
-              </p>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </main>
-
-      <FAB />
-      <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
-    </div>
+    <ErrorBoundary>
+      <div className="min-h-screen bg-background text-on-background pb-32">
+        <TopAppBar />
+        <main className="pt-24 px-4 max-w-2xl mx-auto">
+          <AnimatePresence mode="wait">
+            {activeTab === 'dashboard' && <DashboardContent />}
+            {activeTab !== 'dashboard' && (
+              <motion.div
+                key="placeholder"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="flex flex-col items-center justify-center h-[50vh] text-on-surface-variant"
+              >
+                <span className="material-symbols-outlined text-6xl mb-4 opacity-20">construction</span>
+                <p className="text-lg font-medium opacity-50 underline decoration-primary underline-offset-8">
+                  {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} View Under Construction
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </main>
+        <FAB />
+        <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
+      </div>
+    </ErrorBoundary>
   );
 }
