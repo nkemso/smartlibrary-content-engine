@@ -5,7 +5,6 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { WhopApp } from "@whop/react";
 
 const TopAppBar = () => (
   <header className="fixed top-0 left-0 w-full h-16 bg-slate-950/80 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-6 z-40">
@@ -184,7 +183,6 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
 
   return (
-    <WhopApp sdkOptions={{ appId: "app_biz_NmM39BeWPkA2dn/developer/" }}>
     <div className="min-h-screen bg-background text-on-background pb-32">
       <TopAppBar />
       
@@ -213,6 +211,5 @@ export default function App() {
       <FAB />
       <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
     </div>
-      </WhopApp>
   );
 }
