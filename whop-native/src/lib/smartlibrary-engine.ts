@@ -1,11 +1,28 @@
 export type LibraryItem = {
   id: string;
   title: string;
-  type: "text" | "link" | "note" | "transcript" | "manual" | "course";
+  type: "course" | "file" | "video" | "audio" | "link" | "manual" | "transcript" | "note" | "text";
+  tierIds?: string[];
+  dripRule?: DripRule;
+  uploadUrl?: string;
+  interactive?: boolean;
   content: string;
   source?: string;
   createdAt: string;
   wordCount: number;
+};
+
+export type DripRule = {
+  type: "instant" | "days_after_join" | "date" | "after_completion";
+  value?: string;
+  description: string;
+};
+
+export type ContentTier = {
+  id: string;
+  name: string;
+  description: string;
+  color: string;
 };
 
 export type RetrievedSource = {
@@ -16,6 +33,13 @@ export type RetrievedSource = {
 };
 
 export type TransformAction =
+  | "Structure Course"
+  | "Create Modules"
+  | "Create Lessons"
+  | "Generate Exercises"
+  | "Create Assignments"
+  | "Generate Quiz"
+  | "Create Interactive Lesson"
   | "Summarize"
   | "Explain Simply"
   | "Extract Key Ideas"
@@ -32,6 +56,13 @@ export type TransformAction =
   | "Rewrite";
 
 export const transformActions: TransformAction[] = [
+  "Structure Course",
+  "Create Modules",
+  "Create Lessons",
+  "Generate Exercises",
+  "Create Assignments",
+  "Generate Quiz",
+  "Create Interactive Lesson",
   "Summarize",
   "Explain Simply",
   "Extract Key Ideas",
@@ -177,6 +208,18 @@ export function createLocalOutput(action: TransformAction, query: string, source
   const topSentences = sentences.slice(0, 4);
   const keyIdeas = extractKeyIdeas(combined, 5);
 
+  if (action === "Structure Course" || action === "Create Modules") {
+    return `Summary:\nThis course structure is grounded in ${primary.title}. It converts the uploaded course material into a premium learning pathway with modules, lessons, exercises, assignments, quizzes, and completion flow.\n\nKey Points:\n1. Primary source: ${primary.title}.\n2. Recommended structure: progressive modules with lessons, practice, assessment, and application.\n3. Best use: gated course delivery for Whop tiers, communities, coaching programs, training, or internal education.\n\nInsights:\nThe strongest creator outcome is not just storing content, but turning raw uploads into a guided transformation journey. Learners need sequence, checkpoints, interaction, feedback, and visible progress.\n\nActionable Output:\nCourse Blueprint: ${queryLabel}\n\nModule 1: Foundation and Context\nLesson 1.1: What this topic is about\nLesson 1.2: Why it matters now\nExercise: Identify the learner's starting point and desired outcome.\nQuiz: 5 quick questions to confirm baseline understanding.\n\nModule 2: Core Concepts\nLesson 2.1: ${keyIdeas[0] || "Core principle from the source"}\nLesson 2.2: ${keyIdeas[1] || "Supporting concept"}\nExercise: Apply the concept to a realistic example.\nAssignment: Submit a short implementation note or worksheet.\n\nModule 3: Practical Application\nLesson 3.1: How to use the material in real situations\nLesson 3.2: Common mistakes, risks, and better decisions\nInteractive Activity: Scenario-based choice exercise with immediate feedback.\n\nModule 4: Assessment and Reuse\nLesson 4.1: Review and synthesis\nLesson 4.2: Next steps and reusable assets\nFinal Assignment: Create a checklist, action plan, SOP, or content asset from the course.\nCompletion Reward: Badge, XP, certificate-ready completion note, and unlock next tier content.\n\nSources Used:\n${sourceList}`;
+  }
+
+  if (action === "Generate Quiz") {
+    return `Summary:\nThis quiz is generated from ${primary.title} and is designed to check understanding, retention, and application.\n\nKey Points:\n1. The quiz focuses on the most relevant ideas in the uploaded content.\n2. Questions include recall, understanding, and application.\n3. It can be used as a lesson checkpoint or tier-gated assessment.\n\nInsights:\nGood quizzes should not only test memory. They should reveal whether learners can apply the content correctly.\n\nActionable Output:\nQuiz: ${queryLabel}\n\n1. What is the main idea of this lesson?\nA. ${keyIdeas[0] || "Main source idea"}\nB. An unrelated concept\nC. A minor detail only\nD. None of the above\nAnswer: A\n\n2. Which action best applies the material?\nA. Ignore the content\nB. Turn the key idea into a practical step\nC. Memorize without using it\nD. Delay implementation\nAnswer: B\n\n3. What risk should learners avoid?\nA. Applying the idea without context\nB. Reviewing the source\nC. Asking questions\nD. Practicing the lesson\nAnswer: A\n\n4. Short answer: How would you apply this lesson in your own work or community?\n\n5. Reflection: What is one next step you should take after completing this lesson?\n\nSources Used:\n${sourceList}`;
+  }
+
+  if (action === "Create Assignments" || action === "Generate Exercises" || action === "Create Interactive Lesson") {
+    return `Summary:\nThis interactive learning asset is grounded in ${primary.title}. It helps learners move from passive viewing to active completion.\n\nKey Points:\n1. Learners need practice, reflection, and feedback.\n2. Assignments should produce reusable outputs.\n3. Gamified checkpoints increase completion and retention.\n\nInsights:\nInteractive lessons work best when each step asks the learner to make a decision, submit an answer, complete a micro-task, or unlock progress.\n\nActionable Output:\nInteractive Lesson Plan: ${queryLabel}\n\nStep 1: Watch or read the source material.\nCheckpoint: Tap complete after identifying the main idea.\nXP Reward: 10 XP\n\nStep 2: Answer a reflection prompt.\nPrompt: What does this material change about your thinking or next action?\nXP Reward: 15 XP\n\nStep 3: Complete a practical exercise.\nExercise: Turn the key idea into a checklist, script, note, plan, or example.\nXP Reward: 25 XP\n\nStep 4: Submit assignment.\nAssignment: Create a real-world output from the lesson.\nXP Reward: 50 XP and badge unlock.\n\nStep 5: Unlock next content.\nCondition: Completion of this assignment or passing quiz score.\n\nSources Used:\n${sourceList}`;
+  }
+
   if (action === "Create Lesson") {
     return `Summary:\nThis lesson is grounded in ${primary.title}. It turns the source material into a clear learning experience that can be used for coaching, training, courses, or community education.\n\nKey Points:\n1. Core topic: ${queryLabel}.\n2. Primary source: ${primary.title}.\n3. Main learning focus: ${keyIdeas[0] || "understanding and applying the uploaded content"}.\n\nInsights:\nThe material is most useful when converted from raw information into a guided sequence: concept, explanation, example, practice, and application. This helps learners move from passive reading to usable understanding.\n\nActionable Output:\nLesson Title: ${queryLabel}\n\nLearning Objective:\nBy the end of this lesson, the learner should be able to explain the main idea, identify practical implications, and apply the concept in a real situation.\n\nLesson Flow:\n1. Opening Context: Introduce why this topic matters.\n2. Core Explanation: ${topSentences[0] || primary.excerpt}\n3. Key Ideas: ${keyIdeas.slice(0, 3).join("; ")}.\n4. Practical Exercise: Ask learners to identify one situation where this idea applies.\n5. Reflection Question: What should change in your thinking, workflow, or decision-making because of this lesson?\n\nSources Used:\n${sourceList}`;
   }
@@ -211,8 +254,9 @@ function humanizeTerm(term: string) {
 }
 
 export function buildSuggestedPrompt(item: LibraryItem) {
-  if (item.wordCount < 150) return "Summarize this and suggest how I can use it.";
-  if (item.type === "course" || item.type === "transcript") return "Create a lesson and study guide from this content.";
+  if (item.type === "course" || item.type === "video" || item.type === "file") return "Structure this into modules, lessons, exercises, assignments, quizzes, and interactive checkpoints.";
+  if (item.wordCount < 150) return "Structure this upload and suggest what course asset it should become.";
+  if (item.type === "transcript") return "Create a lesson and study guide from this content.";
   if (item.type === "manual") return "Turn this into an SOP and checklist.";
   return "Summarize this, extract key ideas, and give me an action plan.";
 }

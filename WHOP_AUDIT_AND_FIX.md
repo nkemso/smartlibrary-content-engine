@@ -184,7 +184,13 @@ Functional MVP build after Masterprompt integration:
 - iOS build: `apbu_bLqNFdtoWixiL` — promoted, status `pending`, production `false`
 - Android build: `apbu_mUUR4aYKKwsbt` — promoted, status `pending`, production `false`
 
-The functional MVP adds local library storage, paste/link ingestion, retrieval-first answering, transform actions, source references, selectable/share-ready outputs, and Vercel AI API routes with a deterministic fallback when no Gemini key is configured.
+Creator upload/course build:
+
+- Web build: `apbu_hlABFOWGTi3Ma` — promoted, status `pending`, production `false`
+- iOS build: `apbu_BxL9FD0dF8nuR` — promoted, status `pending`, production `false`
+- Android build: `apbu_MCu19oPsHUHp7` — promoted, status `pending`, production `false`
+
+The current build adds upload-first course asset flow, creator-defined unlimited tiers, tier gating metadata, time/condition drip metadata, course structuring actions, interactive lesson outputs, quiz/assignment generation, gamification UI, Groq/OpenRouter/Gemini backend routing, source references, selectable/share-ready outputs, and Vercel AI API routes with deterministic fallback when no model key is configured.
 
 Supported view types uploaded:
 
