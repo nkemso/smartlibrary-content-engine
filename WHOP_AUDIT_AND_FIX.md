@@ -190,7 +190,13 @@ Creator upload/course build:
 - iOS build: `apbu_BxL9FD0dF8nuR` — promoted, status `pending`, production `false`
 - Android build: `apbu_MCu19oPsHUHp7` — promoted, status `pending`, production `false`
 
-The current build adds upload-first course asset flow, creator-defined unlimited tiers, tier gating metadata, time/condition drip metadata, course structuring actions, interactive lesson outputs, quiz/assignment generation, gamification UI, Groq/OpenRouter/Gemini backend routing, source references, selectable/share-ready outputs, and Vercel AI API routes with deterministic fallback when no model key is configured.
+Crash guard build:
+
+- Web build: `apbu_cPhFKhM4OhyBc` — promoted, status `pending`, production `false`
+- Android build: `apbu_tFpR2sW1duYy4` — promoted, status `pending`, production `false`
+- iOS build: `apbu_mjQFRItjzmsWz` — promoted, status `pending`, production `false`
+
+The current build adds upload-first course asset flow, creator-defined unlimited tiers, tier gating metadata, time/condition drip metadata, course structuring actions, interactive lesson outputs, quiz/assignment generation, gamification UI, Groq/OpenRouter/Gemini backend routing, source references, selectable/share-ready outputs, Vercel AI API routes with deterministic fallback when no model key is configured, and a React Native error boundary/safe-mode screen to prevent total blank screens if a device-specific runtime error occurs.
 
 Supported view types uploaded:
 

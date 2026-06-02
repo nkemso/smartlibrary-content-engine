@@ -1,7 +1,8 @@
 import React from "react";
 import type { DashboardViewProps } from "@whop/react-native";
 import { SmartLibraryApp } from "../components/SmartLibraryApp";
+import { withAppErrorBoundary } from "../components/AppErrorBoundary";
 
 export function DashboardView(props: DashboardViewProps) {
-  return <SmartLibraryApp mode="dashboard" {...props} />;
+  return withAppErrorBoundary(<SmartLibraryApp mode="dashboard" {...props} />);
 }

@@ -1,11 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -223,11 +220,7 @@ export function SmartLibraryApp(props: SmartLibraryProps) {
   }
 
   async function shareOutput() {
-    try {
-      await Share.share({ message: output });
-    } catch {
-      setStageText("Select the output text to copy it cleanly.");
-    }
+    setStageText("Select the output text to copy it cleanly, then share it anywhere.");
   }
 
   function removeSource(id: string) {
@@ -244,8 +237,7 @@ export function SmartLibraryApp(props: SmartLibraryProps) {
 
   return (
     <Shell>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
           <Header title="SmartLibrary" subtitle="AI knowledge engine for your Whop community" badge={props.mode === "dashboard" ? "Admin" : "Native"} />
 
           <Card style={styles.hero}>
@@ -355,8 +347,7 @@ export function SmartLibraryApp(props: SmartLibraryProps) {
               />
             )) : <OnboardingCard />}
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+      </ScrollView>
     </Shell>
   );
 }
