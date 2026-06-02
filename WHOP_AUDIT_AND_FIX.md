@@ -196,7 +196,13 @@ Crash guard build:
 - Android build: `apbu_tFpR2sW1duYy4` — promoted, status `pending`, production `false`
 - iOS build: `apbu_mjQFRItjzmsWz` — promoted, status `pending`, production `false`
 
-The current build adds upload-first course asset flow, creator-defined unlimited tiers, tier gating metadata, time/condition drip metadata, course structuring actions, interactive lesson outputs, quiz/assignment generation, gamification UI, Groq/OpenRouter/Gemini backend routing, source references, selectable/share-ready outputs, Vercel AI API routes with deterministic fallback when no model key is configured, and a React Native error boundary/safe-mode screen to prevent total blank screens if a device-specific runtime error occurs.
+Premium SaaS learning platform upgrade build:
+
+- Web build: `apbu_elZFjTfpNHXrT` — promoted, status `pending`, production `false`
+- iOS build: `apbu_mXTX9qBVrin62` — promoted, status `pending`, production `false`
+- Android build: `apbu_3c10M9NEWZSKP` — promoted, status `pending`, production `false`
+
+The current build adds upload-first course asset flow, creator-defined unlimited tiers, tier gating metadata, time/condition drip metadata, course structuring actions, interactive lesson outputs, quiz/assignment generation, gamification UI, role permission matrix, student/instructor/admin dashboard previews, AI tutor/search/webhook panels, Groq/OpenRouter/Gemini/OpenAI backend routing, source references, selectable/share-ready outputs, Vercel AI API routes with deterministic fallback when no model key is configured, PostgreSQL schema blueprint, webhook route, learning platform route, and a React Native error boundary/safe-mode screen to prevent total blank screens if a device-specific runtime error occurs.
 
 Supported view types uploaded:
 

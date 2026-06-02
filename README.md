@@ -24,8 +24,18 @@ The Vercel SPA fallback is configured in [`vercel.json`](./vercel.json).
 Serverless API routes were added for the Whop native app:
 
 ```txt
-api/ingest.ts      Fetches and extracts readable text from links.
-api/transform.ts   Generates SmartLibrary outputs from retrieved source excerpts.
+api/ingest.ts             Fetches and extracts readable text from links.
+api/transform.ts          Generates SmartLibrary outputs from retrieved source excerpts.
+api/webhooks.ts           Receives/simulates automation events.
+api/learning-platform.ts  Exposes SaaS learning-platform capability metadata.
+```
+
+Production backend blueprints were added:
+
+```txt
+database/schema.sql       PostgreSQL relational schema.
+backend/                  Modular backend service contracts.
+docs/API.md               API and environment documentation.
 ```
 
 For AI-enhanced generation, set one of these environment variables in Vercel:

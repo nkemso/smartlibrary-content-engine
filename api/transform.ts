@@ -84,6 +84,17 @@ export default async function handler(req: any, res: any) {
       if (output) return res.status(200).json({ output, provider: "openrouter" });
     }
 
+    if ((provider === "auto" || provider === "openai") && process.env.OPENAI_API_KEY) {
+      const output = await callOpenAICompatible({
+        url: "https://api.openai.com/v1/chat/completions",
+        apiKey: process.env.OPENAI_API_KEY,
+        model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+        prompt,
+        extraHeaders: {},
+      });
+      if (output) return res.status(200).json({ output, provider: "openai" });
+    }
+
     const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
     if ((provider === "auto" || provider === "gemini") && geminiKey) {
       try {

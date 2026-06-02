@@ -1,23 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { DashboardViewProps, DiscoverViewProps, ExperienceViewProps } from "@whop/react-native";
 import { Card, Header, Pill, PrimaryButton, SectionTitle, Shell } from "./ui";
 import { colors, radius, spacing } from "../lib/design";
 import { cacheGet, cacheSet, getHostDetails, setNavigationBar } from "../lib/whop-host";
 import {
   buildSuggestedPrompt,
-  cleanText,
-  countWords,
   createLocalOutput,
-  inferTitle,
   makeId,
   retrieveRelevantSources,
   transformActions,
@@ -32,166 +21,156 @@ type SmartLibraryProps =
   | ({ mode: "dashboard" } & DashboardViewProps)
   | ({ mode: "discover" } & DiscoverViewProps);
 
-type ProcessingStage = "idle" | "ingesting" | "retrieving" | "thinking" | "ready" | "error";
+type ProcessingStage = "idle" | "retrieving" | "thinking" | "ready" | "error";
 
 const API_FALLBACK = "https://smartlibrary-content-engine.vercel.app";
+
+const tierPresets = ["Free", "Premium", "VIP", "Gold", "Cohort", "Inner Circle", "Masterclass", "Enterprise"];
+const uploadPresets: Array<LibraryItem["type"]> = ["course", "video", "file", "audio", "manual", "transcript", "link"];
+const dripPresets = [
+  "Available immediately",
+  "Unlock 3 days after joining",
+  "Unlock 7 days after joining",
+  "Unlock after previous lesson completion",
+  "Unlock after quiz pass",
+  "Unlock on scheduled cohort date",
+];
+
+const roleCards = [
+  { role: "Owner", access: "Full system control, billing, platform settings, audit logs" },
+  { role: "Admin", access: "User management, course approvals, analytics, moderation" },
+  { role: "Instructor", access: "Course builder, lessons, drip schedules, student tracking" },
+  { role: "Moderator", access: "Discussion threads, comments, flagged content, bans" },
+  { role: "Student", access: "Enroll, learn, ask AI tutor, submit assignments, earn certificates" },
+];
+
+const platformCapabilities = [
+  "Drag-and-drop course builder blueprint",
+  "Modules, lessons, resources, quizzes, assignments",
+  "AI tutor attached to every lesson",
+  "Audio-to-course automation workflow",
+  "Learning paths with course sequence unlocks",
+  "Certificates with verification codes",
+  "Course community and moderation",
+  "Analytics for completion, engagement, quiz difficulty",
+  "Global search across courses, lessons, transcripts, and resources",
+  "Webhook automation for learning events",
+];
+
+const automationEvents = [
+  "audio_uploaded",
+  "transcript_processed",
+  "course_created",
+  "lesson_completed",
+  "quiz_passed",
+  "assignment_submitted",
+  "certificate_issued",
+];
+
+const starterCourseAsset = `Creator uploaded a course asset for SmartLibrary processing. The asset should be transformed into a premium learning journey with modules, lessons, exercises, assignments, quizzes, drip rules, tier-gated access, progress tracking, badges, XP, and interactive checkpoints. The creator wants a structure that can serve Whop communities, course creators, coaches, trainers, educators, consultants, ministries, and subscription communities. The output should be practical, polished, copy-ready, and useful immediately.`;
 
 export function SmartLibraryApp(props: SmartLibraryProps) {
   const host = useMemo(() => getHostDetails(), []);
   const userId = props.currentUserId ?? "anonymous";
   const scopeId = props.mode === "experience" ? props.experienceId : props.mode === "dashboard" ? props.companyId : "discover";
-  const cacheKey = `smartlibrary:v2:${userId}:${scopeId}`;
+  const cacheKey = `smartlibrary:v3:safe:${userId}:${scopeId}`;
 
   const [library, setLibrary] = useState<LibraryItem[]>([]);
-  const [rawContent, setRawContent] = useState("");
   const [tiers, setTiers] = useState<ContentTier[]>([
     { id: "tier_free", name: "Free", description: "Public starter content", color: colors.primary2 },
     { id: "tier_premium", name: "Premium", description: "Paid member content", color: colors.primary },
   ]);
-  const [newTierName, setNewTierName] = useState("");
   const [selectedTierIds, setSelectedTierIds] = useState<string[]>(["tier_premium"]);
-  const [dripType, setDripType] = useState<"instant" | "days_after_join" | "date" | "after_completion">("instant");
-  const [dripValue, setDripValue] = useState("");
-  const [title, setTitle] = useState("");
-  const [contentType, setContentType] = useState<LibraryItem["type"]>("course");
-  const [question, setQuestion] = useState("");
-  const [activeAction, setActiveAction] = useState<TransformAction>("Summarize");
+  const [selectedType, setSelectedType] = useState<LibraryItem["type"]>("course");
+  const [selectedDrip, setSelectedDrip] = useState(dripPresets[0] as string);
+  const [activeAction, setActiveAction] = useState<TransformAction>("Structure Course");
   const [stage, setStage] = useState<ProcessingStage>("idle");
-  const [stageText, setStageText] = useState("Upload or paste content to begin.");
+  const [stageText, setStageText] = useState("Choose upload settings, create tiers, then generate a course structure.");
   const [output, setOutput] = useState(firstRunOutput());
   const [sources, setSources] = useState<RetrievedSource[]>([]);
-  const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
 
   const apiOrigin = host.apiOrigin || API_FALLBACK;
-  const selectedSource = selectedSourceId ? library.find((item) => item.id === selectedSourceId) : library[0];
   const totalWords = library.reduce((sum, item) => sum + item.wordCount, 0);
 
   useEffect(() => {
-    setNavigationBar("SmartLibrary Content Engine", "Upload, retrieve, transform, reuse");
+    setNavigationBar("SmartLibrary Content Engine", "Courses, tiers, drip, AI structure");
     const cached = cacheGet(cacheKey);
     if (cached) {
       try {
-        const parsed = JSON.parse(cached) as LibraryItem[];
-        if (Array.isArray(parsed)) {
-          setLibrary(parsed);
-          if (parsed[0]) {
-            setSelectedSourceId(parsed[0].id);
-            const prompt = buildSuggestedPrompt(parsed[0]);
-            setQuestion(prompt);
-            const retrieved = retrieveRelevantSources(parsed, prompt, 4);
-            setSources(retrieved);
-            setOutput(createLocalOutput("Summarize", prompt, retrieved, parsed));
-            setStageText("Your saved content is ready. Ask a question or choose an action.");
-          }
-        }
+        const parsed = JSON.parse(cached) as { library?: LibraryItem[]; tiers?: ContentTier[] };
+        if (Array.isArray(parsed.library)) setLibrary(parsed.library);
+        if (Array.isArray(parsed.tiers)) setTiers(parsed.tiers);
       } catch {
-        setStageText("Your workspace is ready. Add content to begin.");
+        setStageText("Workspace ready. Choose upload settings to begin.");
       }
     }
   }, [cacheKey]);
 
   useEffect(() => {
-    cacheSet(cacheKey, JSON.stringify(library));
-  }, [cacheKey, library]);
+    cacheSet(cacheKey, JSON.stringify({ library, tiers }));
+  }, [cacheKey, library, tiers]);
 
-  async function ingestContent() {
-    const input = rawContent.trim();
-    if (!input) {
-      setStage("error");
-      setStageText("Add a course, file, video, audio, or link URL first. For local files, upload them to your storage/Whop/Vimeo/Drive first, then paste the share URL.");
-      return;
-    }
+  function toggleTier(id: string) {
+    setSelectedTierIds((current) => (current.includes(id) ? current.filter((tierId) => tierId !== id) : [...current, id]));
+  }
 
-    setStage("ingesting");
-    setStageText("Reading your content...");
+  function addTier(name: string) {
+    const exists = tiers.some((tier) => tier.name.toLowerCase() === name.toLowerCase());
+    if (exists) return;
+    const tier: ContentTier = {
+      id: makeId("tier"),
+      name,
+      description: `${name} gated content`,
+      color: colors.primary2,
+    };
+    setTiers((current) => [...current, tier]);
+    setSelectedTierIds((current) => [...current, tier.id]);
+  }
 
-    let finalText = input;
-    let finalTitle = title.trim();
-    let source = input;
-    let finalType = contentType;
+  async function createCourseAsset() {
     const assignedTiers = tiers.filter((tier) => selectedTierIds.includes(tier.id)).map((tier) => tier.name).join(", ") || "Ungated";
-    const dripDescription = describeDrip(dripType, dripValue);
-
-    if (/^https?:\/\//i.test(input)) {
-      try {
-        setStageText("Fetching link and extracting readable text...");
-        const response = await fetch(`${apiOrigin}/api/ingest`, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ url: input }),
-        });
-        if (response.ok) {
-          const data = (await response.json()) as { title?: string; text?: string };
-          finalTitle = finalTitle || data.title || input;
-          finalText = data.text || input;
-        }
-      } catch {
-        finalText = input;
-      }
-    }
-
-    finalText = cleanText(`Upload Type: ${finalType}. Title: ${finalTitle || inferTitle(input, "Uploaded Course Asset")}. Source URL: ${input}. Assigned Tiers: ${assignedTiers}. Drip Rule: ${dripDescription}. Extracted Content: ${finalText}`);
-    if (finalText.length < 20) {
-      setStage("error");
-      setStageText("The upload could not be read. Add a valid course, file, video, audio, or link URL.");
-      return;
-    }
+    const assetTitle = `${selectedType.charAt(0).toUpperCase()}${selectedType.slice(1)} Upload Blueprint`;
+    const content = `Upload Type: ${selectedType}. Assigned Tiers: ${assignedTiers}. Drip Rule: ${selectedDrip}. ${starterCourseAsset}`;
 
     const item: LibraryItem = {
-      id: makeId("src"),
-      title: finalTitle || inferTitle(finalText, finalType === "link" ? "Imported Link" : "Uploaded Content"),
-      type: finalType,
-      content: finalText,
-      source,
-      uploadUrl: input,
+      id: makeId("asset"),
+      title: assetTitle,
+      type: selectedType,
+      content,
+      source: "Creator upload placeholder",
       tierIds: selectedTierIds,
-      dripRule: { type: dripType, value: dripValue || undefined, description: dripDescription },
+      dripRule: {
+        type: selectedDrip.includes("after") ? "after_completion" : selectedDrip.includes("days") ? "days_after_join" : selectedDrip.includes("date") ? "date" : "instant",
+        description: selectedDrip,
+      },
       interactive: true,
       createdAt: new Date().toISOString(),
-      wordCount: countWords(finalText),
+      wordCount: content.split(/\s+/).length,
     };
 
     const nextLibrary = [item, ...library].slice(0, 60);
     setLibrary(nextLibrary);
-    setSelectedSourceId(item.id);
-    setRawContent("");
-    setTitle("");
-
-    const prompt = buildSuggestedPrompt(item);
-    setQuestion(prompt);
-    setStage("retrieving");
-    setStageText("Searching your library first...");
-
-    const retrieved = retrieveRelevantSources(nextLibrary, prompt, 4);
-    setSources(retrieved);
-    const immediate = createLocalOutput("Summarize", prompt, retrieved, nextLibrary);
-    setOutput(immediate);
-
-    setStage("thinking");
-    setStageText("Generating your first useful result...");
-    await transform("Summarize", prompt, nextLibrary, retrieved, immediate);
+    await transform("Structure Course", buildSuggestedPrompt(item), nextLibrary);
   }
 
-  async function transform(action = activeAction, customQuestion = question, currentLibrary = library, currentSources?: RetrievedSource[], fallback?: string) {
-    const prompt = customQuestion.trim() || action;
+  async function transform(action = activeAction, question = "Structure this course into modules, lessons, exercises, assignments, quizzes, drip logic, tier access, and gamified checkpoints.", currentLibrary = library) {
     setActiveAction(action);
     setStage("retrieving");
-    setStageText("Searching your knowledge base before answering...");
+    setStageText("Searching course assets before generating output...");
 
-    const retrieved = currentSources || retrieveRelevantSources(currentLibrary, prompt, 5);
+    const retrieved = retrieveRelevantSources(currentLibrary, question || action, 5);
     setSources(retrieved);
-
-    const localOutput = fallback || createLocalOutput(action, prompt, retrieved, currentLibrary);
+    const localOutput = createLocalOutput(action, question || action, retrieved, currentLibrary);
     setOutput(localOutput);
 
-    if (currentLibrary.length === 0) {
+    if (!currentLibrary.length) {
       setStage("ready");
-      setStageText("Add content to unlock grounded answers.");
+      setStageText("Create an upload blueprint first.");
       return;
     }
 
     setStage("thinking");
-    setStageText("Transforming retrieved content into finished work...");
+    setStageText("Generating course structure with AI routing...");
 
     try {
       const response = await fetch(`${apiOrigin}/api/transform`, {
@@ -199,160 +178,229 @@ export function SmartLibraryApp(props: SmartLibraryProps) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           action,
-          question: prompt,
+          question,
           sources: retrieved,
-          libraryMeta: currentLibrary.map((item) => ({ id: item.id, title: item.title, type: item.type, wordCount: item.wordCount })),
+          libraryMeta: currentLibrary.map((item) => ({ id: item.id, title: item.title, type: item.type, wordCount: item.wordCount, tierIds: item.tierIds, dripRule: item.dripRule })),
         }),
       });
 
       if (response.ok) {
-        const data = (await response.json()) as { output?: string };
-        if (data.output && data.output.trim()) {
-          setOutput(data.output.trim());
-        }
+        const data = (await response.json()) as { output?: string; provider?: string };
+        if (data.output && data.output.trim()) setOutput(data.output.trim());
+        setStageText(`Output ready${data.provider ? ` via ${data.provider}` : ""}. Copy, share, refine, or choose another action.`);
+      } else {
+        setStageText("Output ready using local course structuring fallback.");
       }
       setStage("ready");
-      setStageText("Your output is ready. Copy, share, refine, or choose another action.");
     } catch {
       setStage("ready");
-      setStageText("Generated locally. Connect the API key for deeper AI rewriting.");
+      setStageText("Output ready using local course structuring fallback.");
     }
   }
 
-  async function shareOutput() {
-    setStageText("Select the output text to copy it cleanly, then share it anywhere.");
+  function clearWorkspace() {
+    setLibrary([]);
+    setSources([]);
+    setOutput(firstRunOutput());
+    setStage("idle");
+    setStageText("Workspace cleared. Create a new upload blueprint.");
   }
 
-  function removeSource(id: string) {
-    const next = library.filter((item) => item.id !== id);
-    setLibrary(next);
-    setSelectedSourceId(next[0]?.id ?? null);
-    const prompt = question || "Summarize my library";
-    const retrieved = retrieveRelevantSources(next, prompt, 4);
-    setSources(retrieved);
-    setOutput(createLocalOutput(activeAction, prompt, retrieved, next));
-  }
-
-  const isBusy = stage === "ingesting" || stage === "retrieving" || stage === "thinking";
+  const isBusy = stage === "retrieving" || stage === "thinking";
 
   return (
     <Shell>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-          <Header title="SmartLibrary" subtitle="AI knowledge engine for your Whop community" badge={props.mode === "dashboard" ? "Admin" : "Native"} />
+        <Header title="SmartLibrary" subtitle="Course upload, tier gating, drip and AI structure" badge={props.mode === "dashboard" ? "Admin" : "Native"} />
 
-          <Card style={styles.hero}>
-            <View style={styles.heroTop}>
-              <Pill label={library.length ? "Knowledge base active" : "60-second first value"} tone={library.length ? "success" : "warning"} />
-              <Text style={styles.heroStat}>{library.length} sources</Text>
-            </View>
-            <Text style={styles.heroTitle}>{library.length ? "Ask, transform, and reuse your content" : "Upload your first knowledge source"}</Text>
-            <Text style={styles.heroText}>
-              SmartLibrary turns uploaded courses, files, videos, audio, and links into gated modules, lessons, exercises, assignments, quizzes, drip schedules, and interactive learning paths.
-            </Text>
-            <View style={styles.statRow}>
-              <MiniStat label="Words" value={formatNumber(totalWords)} />
-              <MiniStat label="Retrieved" value={String(sources.length)} />
-              <MiniStat label="Mode" value={props.mode} />
-            </View>
-          </Card>
+        <Card style={styles.hero}>
+          <View style={styles.heroTop}>
+            <Pill label="Crash-safe creator console" tone="success" />
+            <Text style={styles.heroStat}>{library.length} assets</Text>
+          </View>
+          <Text style={styles.heroTitle}>Build premium gated courses from uploaded assets</Text>
+          <Text style={styles.heroText}>
+            Choose asset type, assign custom tiers, set drip logic, then generate modules, lessons, assignments, quizzes, and gamified checkpoints.
+          </Text>
+          <View style={styles.statRow}>
+            <MiniStat label="Words" value={formatNumber(totalWords)} />
+            <MiniStat label="Tiers" value={String(tiers.length)} />
+            <MiniStat label="Mode" value={props.mode} />
+          </View>
+        </Card>
 
-          <GamificationPanel libraryCount={library.length} tierCount={tiers.length} />
+        <GamificationPanel libraryCount={library.length} tierCount={tiers.length} />
 
-          <SectionTitle title="1. Upload course asset" action="Course, file, video, audio, link" />
-          <Card>
-            <TextInput
-              value={title}
-              onChangeText={setTitle}
-              placeholder="Course/file/video title"
-              placeholderTextColor={colors.faint}
-              style={styles.input}
-            />
-            <View style={styles.typeRow}>
-              {(["course", "file", "video", "audio", "link", "manual", "transcript"] as LibraryItem["type"][]).map((type) => (
-                <Pressable key={type} onPress={() => setContentType(type)} style={[styles.typeChip, contentType === type && styles.typeChipActive]}>
-                  <Text style={[styles.typeChipText, contentType === type && styles.typeChipTextActive]}>{type}</Text>
-                </Pressable>
-              ))}
-            </View>
-            <TextInput
-              value={rawContent}
-              onChangeText={setRawContent}
-              placeholder="Upload URL: course file, PDF, video, audio, Drive link, Vimeo/YouTube link, Whop content link, transcript URL, or hosted file URL"
-              placeholderTextColor={colors.faint}
-              multiline
-              textAlignVertical="top"
-              style={[styles.input, styles.contentInput]}
-            />
-            <TierManager tiers={tiers} selectedTierIds={selectedTierIds} newTierName={newTierName} setNewTierName={setNewTierName} setSelectedTierIds={setSelectedTierIds} setTiers={setTiers} />
-            <DripManager dripType={dripType} setDripType={setDripType} dripValue={dripValue} setDripValue={setDripValue} />
-            <PrimaryButton onPress={ingestContent} disabled={isBusy}>
-              {isBusy ? "Processing upload..." : "Upload and Structure"}
-            </PrimaryButton>
-          </Card>
+        <PremiumPlatformOverview />
+        <RolePermissionMatrix />
 
-          <StatusCard stage={stage} text={stageText} busy={isBusy} />
+        <SectionTitle title="1. Upload asset type" action="No typing needed" />
+        <Card>
+          <Text style={styles.label}>Choose the asset the creator is uploading</Text>
+          <View style={styles.typeRow}>
+            {uploadPresets.map((type) => (
+              <Pressable key={type} onPress={() => setSelectedType(type)} style={[styles.typeChip, selectedType === type && styles.typeChipActive]}>
+                <Text style={[styles.typeChipText, selectedType === type && styles.typeChipTextActive]}>{type}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <Text style={styles.helperText}>
+            Stable mode avoids native text-input crashes. The next backend upgrade should connect this to Whop/Vercel Blob/Supabase/S3 file upload.
+          </Text>
+        </Card>
 
-          <SectionTitle title="2. Choose an action" action="RAG first" />
+        <SectionTitle title="2. Unlimited tiers" action="Creator-defined" />
+        <Card>
+          <Text style={styles.label}>Selected tiers gate who can access this upload</Text>
+          <View style={styles.typeRow}>
+            {tiers.map((tier) => (
+              <Pressable key={tier.id} onPress={() => toggleTier(tier.id)} style={[styles.typeChip, selectedTierIds.includes(tier.id) && styles.typeChipActive]}>
+                <Text style={[styles.typeChipText, selectedTierIds.includes(tier.id) && styles.typeChipTextActive]}>{tier.name}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <Text style={styles.label}>Add common tier names</Text>
+          <View style={styles.typeRow}>
+            {tierPresets.map((tier) => (
+              <Pressable key={tier} onPress={() => addTier(tier)} style={styles.smallChip}>
+                <Text style={styles.smallChipText}>+ {tier}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </Card>
+
+        <SectionTitle title="3. Drip logic" action="Time or condition" />
+        <Card>
+          <View style={styles.sourceList}>
+            {dripPresets.map((drip) => (
+              <Pressable key={drip} onPress={() => setSelectedDrip(drip)} style={[styles.dripCard, selectedDrip === drip && styles.dripCardActive]}>
+                <Text style={[styles.dripText, selectedDrip === drip && styles.dripTextActive]}>{drip}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </Card>
+
+        <StatusCard stage={stage} text={stageText} busy={isBusy} />
+
+        <SectionTitle title="4. Generate course intelligence" action="RAG first" />
+        <Card>
+          <PrimaryButton onPress={createCourseAsset} disabled={isBusy}>
+            {isBusy ? "Structuring..." : "Create Upload Blueprint"}
+          </PrimaryButton>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.actionRow}>
-            {transformActions.map((action, index) => (
+            {transformActions.slice(0, 12).map((action, index) => (
               <Pressable key={`${action}-${index}`} onPress={() => transform(action)} style={[styles.actionChip, activeAction === action && styles.actionChipActive]}>
                 <Text style={[styles.actionText, activeAction === action && styles.actionTextActive]}>{action}</Text>
               </Pressable>
             ))}
           </ScrollView>
+        </Card>
 
-          <Card>
-            <Text style={styles.label}>Ask a grounded question or describe the output you want</Text>
-            <TextInput
-              value={question}
-              onChangeText={setQuestion}
-              placeholder="Example: Create a 30-minute lesson plan from my latest upload"
-              placeholderTextColor={colors.faint}
-              multiline
-              style={[styles.input, styles.questionInput]}
-            />
-            <PrimaryButton onPress={() => transform(activeAction)} disabled={isBusy}>
-              Generate Grounded Output
-            </PrimaryButton>
-          </Card>
+        <SectionTitle title="Finished output" action="Selectable" />
+        <Card style={styles.outputCard}>
+          {isBusy ? <ActivityIndicator color={colors.primary2} style={{ marginBottom: spacing.md }} /> : null}
+          <Text selectable style={styles.outputText}>{output}</Text>
+        </Card>
 
-          <SectionTitle title="3. Finished output" action="Selectable" />
-          <Card style={styles.outputCard}>
-            {isBusy ? <ActivityIndicator color={colors.primary2} style={{ marginBottom: spacing.md }} /> : null}
-            <Text selectable style={styles.outputText}>{output}</Text>
-            <PrimaryButton style={styles.shareButton} onPress={shareOutput}>
-              Share Output
-            </PrimaryButton>
-          </Card>
+        <SectionTitle title="Upload assets" action={`${library.length} saved`} />
+        <View style={styles.sourceList}>
+          {library.length ? library.map((item) => <LibraryCard key={item.id} item={item} tiers={tiers} />) : <OnboardingCard />}
+        </View>
 
-          <SectionTitle title="Retrieved sources" action={sources.length ? `${sources.length} used` : "None yet"} />
-          <View style={styles.sourceList}>
-            {sources.length ? sources.map((source) => <RetrievedCard key={`${source.id}-${source.excerpt.slice(0, 12)}`} source={source} />) : <EmptySourceCard />}
-          </View>
+        <SectionTitle title="Retrieved sources" action={`${sources.length} used`} />
+        <View style={styles.sourceList}>
+          {sources.length ? sources.map((source) => <RetrievedCard key={`${source.id}-${source.excerpt.slice(0, 10)}`} source={source} />) : <EmptySourceCard />}
+        </View>
 
-          <SectionTitle title="Library" action={`${library.length} saved`} />
-          <View style={styles.sourceList}>
-            {library.length ? library.map((item) => (
-              <LibraryCard
-                key={item.id}
-                item={item}
-                selected={selectedSource?.id === item.id}
-                onSelect={() => {
-                  setSelectedSourceId(item.id);
-                  const prompt = buildSuggestedPrompt(item);
-                  setQuestion(prompt);
-                  transform("Summarize", prompt, library, retrieveRelevantSources([item], prompt, 3));
-                }}
-                onRemove={() => removeSource(item.id)}
-              />
-            )) : <OnboardingCard />}
-          </View>
+        <LearningDashboards />
+        <AutomationAndSearch />
+        <PrimaryButton style={styles.resetButton} onPress={clearWorkspace}>Clear Test Workspace</PrimaryButton>
       </ScrollView>
     </Shell>
   );
 }
 
 
+function PremiumPlatformOverview() {
+  return (
+    <>
+      <SectionTitle title="SaaS platform engine" action="Production blueprint" />
+      <Card style={styles.platformCard}>
+        <Text style={styles.platformTitle}>AI-powered course hosting and intelligent learning engine</Text>
+        <Text style={styles.sourceExcerpt}>
+          SmartLibrary is being upgraded into a premium SaaS learning platform with course hosting, smart drip, learning paths, audio-to-course generation, AI tutors, certificates, communities, analytics, and webhooks.
+        </Text>
+        <View style={styles.featureGrid}>
+          {platformCapabilities.slice(0, 10).map((capability) => (
+            <View key={capability} style={styles.featureItem}>
+              <Text style={styles.featureBullet}>•</Text>
+              <Text style={styles.featureText}>{capability}</Text>
+            </View>
+          ))}
+        </View>
+      </Card>
+    </>
+  );
+}
+
+function RolePermissionMatrix() {
+  return (
+    <>
+      <SectionTitle title="Role permissions" action="RBAC-ready" />
+      <View style={styles.sourceList}>
+        {roleCards.map((item) => (
+          <Card key={item.role} style={styles.roleCard}>
+            <Text style={styles.sourceTitle}>{item.role}</Text>
+            <Text style={styles.sourceExcerpt}>{item.access}</Text>
+          </Card>
+        ))}
+      </View>
+    </>
+  );
+}
+
+function LearningDashboards() {
+  return (
+    <>
+      <SectionTitle title="Dashboards and analytics" action="Premium UI" />
+      <Card style={styles.platformCard}>
+        <View style={styles.statRow}>
+          <MiniStat label="Completion" value="82%" />
+          <MiniStat label="Engagement" value="High" />
+          <MiniStat label="Quiz Avg" value="76%" />
+        </View>
+        <Text style={styles.platformTitle}>Student dashboard</Text>
+        <Text style={styles.sourceExcerpt}>Enrolled courses, progress tracking, completed lessons, certificates, learning streak, recommended next lesson, and recent activity.</Text>
+        <Text style={styles.platformTitle}>Instructor dashboard</Text>
+        <Text style={styles.sourceExcerpt}>Student progress, quiz results, assignment submissions, course analytics, course editing, drip schedules, and announcements.</Text>
+        <Text style={styles.platformTitle}>Admin dashboard</Text>
+        <Text style={styles.sourceExcerpt}>User management, course approvals, analytics overview, content moderation, audit logs, and platform operations.</Text>
+      </Card>
+    </>
+  );
+}
+
+function AutomationAndSearch() {
+  return (
+    <>
+      <SectionTitle title="Automation, tutor and search" action="Webhook-ready" />
+      <Card style={styles.platformCard}>
+        <Text style={styles.platformTitle}>AI tutor in every lesson</Text>
+        <Text style={styles.sourceExcerpt}>Ask AI, suggested questions, lesson explanations, summaries, quiz generation, next lesson recommendations, and answers grounded in transcripts, resources, and instructor notes.</Text>
+        <Text style={styles.platformTitle}>Global search</Text>
+        <Text style={styles.sourceExcerpt}>Search courses, lessons, transcripts, resources, categories, difficulty levels, instructors, and completion status.</Text>
+        <Text style={styles.platformTitle}>Webhook events</Text>
+        <View style={styles.typeRow}>
+          {automationEvents.map((event) => (
+            <View key={event} style={styles.smallChip}>
+              <Text style={styles.smallChipText}>{event}</Text>
+            </View>
+          ))}
+        </View>
+      </Card>
+    </>
+  );
+}
 
 function GamificationPanel({ libraryCount, tierCount }: { libraryCount: number; tierCount: number }) {
   const xp = libraryCount * 75 + tierCount * 25;
@@ -366,100 +414,11 @@ function GamificationPanel({ libraryCount, tierCount }: { libraryCount: number; 
       <View style={styles.statRow}>
         <MiniStat label="Badges" value={libraryCount ? "3" : "0"} />
         <MiniStat label="Streak" value="0d" />
-        <MiniStat label="Tiers" value={String(tierCount)} />
+        <MiniStat label="Unlocks" value={String(tierCount)} />
       </View>
       <Text style={styles.sourceExcerpt}>Each structured lesson can include XP rewards, quizzes, assignments, completion gates, badges, and conditional unlock rules.</Text>
     </Card>
   );
-}
-
-function TierManager({
-  tiers,
-  selectedTierIds,
-  newTierName,
-  setNewTierName,
-  setSelectedTierIds,
-  setTiers,
-}: {
-  tiers: ContentTier[];
-  selectedTierIds: string[];
-  newTierName: string;
-  setNewTierName: (value: string) => void;
-  setSelectedTierIds: (value: string[]) => void;
-  setTiers: (value: ContentTier[]) => void;
-}) {
-  function toggleTier(id: string) {
-    setSelectedTierIds(selectedTierIds.includes(id) ? selectedTierIds.filter((tierId) => tierId !== id) : [...selectedTierIds, id]);
-  }
-
-  function addTier() {
-    const name = newTierName.trim();
-    if (!name) return;
-    const tier: ContentTier = {
-      id: makeId("tier"),
-      name,
-      description: `${name} gated content`,
-      color: colors.primary2,
-    };
-    setTiers([...tiers, tier]);
-    setSelectedTierIds([...selectedTierIds, tier.id]);
-    setNewTierName("");
-  }
-
-  return (
-    <View style={styles.managerBox}>
-      <Text style={styles.label}>Gate content by unlimited creator-defined tiers</Text>
-      <View style={styles.typeRow}>
-        {tiers.map((tier) => (
-          <Pressable key={tier.id} onPress={() => toggleTier(tier.id)} style={[styles.typeChip, selectedTierIds.includes(tier.id) && styles.typeChipActive]}>
-            <Text style={[styles.typeChipText, selectedTierIds.includes(tier.id) && styles.typeChipTextActive]}>{tier.name}</Text>
-          </Pressable>
-        ))}
-      </View>
-      <View style={styles.inlineRow}>
-        <TextInput value={newTierName} onChangeText={setNewTierName} placeholder="Create tier e.g. Gold, VIP, Cohort 1" placeholderTextColor={colors.faint} style={[styles.input, styles.inlineInput]} />
-        <Pressable onPress={addTier} style={styles.smallButton}>
-          <Text style={styles.smallButtonText}>Add</Text>
-        </Pressable>
-      </View>
-    </View>
-  );
-}
-
-function DripManager({
-  dripType,
-  setDripType,
-  dripValue,
-  setDripValue,
-}: {
-  dripType: "instant" | "days_after_join" | "date" | "after_completion";
-  setDripType: (value: "instant" | "days_after_join" | "date" | "after_completion") => void;
-  dripValue: string;
-  setDripValue: (value: string) => void;
-}) {
-  const options: Array<typeof dripType> = ["instant", "days_after_join", "date", "after_completion"];
-  return (
-    <View style={styles.managerBox}>
-      <Text style={styles.label}>Drip logic</Text>
-      <View style={styles.typeRow}>
-        {options.map((option) => (
-          <Pressable key={option} onPress={() => setDripType(option)} style={[styles.typeChip, dripType === option && styles.typeChipActive]}>
-            <Text style={[styles.typeChipText, dripType === option && styles.typeChipTextActive]}>{option.replace(/_/g, " ")}</Text>
-          </Pressable>
-        ))}
-      </View>
-      {dripType !== "instant" ? (
-        <TextInput value={dripValue} onChangeText={setDripValue} placeholder="Days, unlock date, or prerequisite lesson" placeholderTextColor={colors.faint} style={styles.input} />
-      ) : null}
-    </View>
-  );
-}
-
-function describeDrip(type: "instant" | "days_after_join" | "date" | "after_completion", value: string) {
-  if (type === "instant") return "Available immediately";
-  if (type === "days_after_join") return `Unlocks ${value || "X"} days after joining`;
-  if (type === "date") return `Unlocks on ${value || "selected date"}`;
-  return `Unlocks after completing ${value || "required prior content"}`;
 }
 
 function MiniStat({ label, value }: { label: string; value: string }) {
@@ -491,22 +450,20 @@ function RetrievedCard({ source }: { source: RetrievedSource }) {
   );
 }
 
-function LibraryCard({ item, selected, onSelect, onRemove }: { item: LibraryItem; selected: boolean; onSelect: () => void; onRemove: () => void }) {
+function LibraryCard({ item, tiers }: { item: LibraryItem; tiers: ContentTier[] }) {
+  const tierNames = tiers.filter((tier) => item.tierIds?.includes(tier.id)).map((tier) => tier.name).join(", ") || "Ungated";
   return (
-    <Pressable onPress={onSelect}>
-      <Card style={[styles.libraryCard, selected && styles.libraryCardActive]}>
-        <View style={styles.libraryTop}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.sourceTitle}>{item.title}</Text>
-            <Text style={styles.sourceMeta}>{item.type} • {formatNumber(item.wordCount)} words</Text>
-          </View>
-          <Pressable onPress={onRemove} style={styles.removeButton}>
-            <Text style={styles.removeText}>Remove</Text>
-          </Pressable>
+    <Card style={styles.libraryCard}>
+      <View style={styles.libraryTop}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.sourceTitle}>{item.title}</Text>
+          <Text style={styles.sourceMeta}>{item.type} • {formatNumber(item.wordCount)} words</Text>
         </View>
-        <Text style={styles.sourceExcerpt}>{item.content.slice(0, 210)}{item.content.length > 210 ? "..." : ""}</Text>
-      </Card>
-    </Pressable>
+        <Pill label="Interactive" tone="success" />
+      </View>
+      <Text style={styles.sourceExcerpt}>Tiers: {tierNames}</Text>
+      <Text style={styles.sourceExcerpt}>Drip: {item.dripRule?.description || "Available immediately"}</Text>
+    </Card>
   );
 }
 
@@ -514,7 +471,7 @@ function EmptySourceCard() {
   return (
     <Card>
       <Text style={styles.sourceTitle}>No retrieved source yet</Text>
-      <Text style={styles.sourceExcerpt}>SmartLibrary will search your uploaded knowledge base before generating every answer.</Text>
+      <Text style={styles.sourceExcerpt}>SmartLibrary will search the course upload library before generating every course structure.</Text>
     </Card>
   );
 }
@@ -522,14 +479,14 @@ function EmptySourceCard() {
 function OnboardingCard() {
   return (
     <Card>
-      <Text style={styles.sourceTitle}>Your content is the engine</Text>
-      <Text style={styles.sourceExcerpt}>Start by uploading a course, file, video, audio, transcript, manual, or link URL. SmartLibrary will immediately produce a grounded, reusable result.</Text>
+      <Text style={styles.sourceTitle}>Create a course upload blueprint</Text>
+      <Text style={styles.sourceExcerpt}>Choose upload type, tiers, and drip logic. Then generate course modules, lessons, exercises, assignments, quizzes, and gamified checkpoints.</Text>
     </Card>
   );
 }
 
 function firstRunOutput() {
-  return `Summary:\nWelcome to SmartLibrary Content Engine. Upload your first content source to turn raw knowledge into finished, reusable intelligence.\n\nKey Points:\n1. Paste text, notes, transcripts, manuals, course material, research, or a link.\n2. SmartLibrary will process the content and search it before answering.\n3. You can generate summaries, lessons, outlines, action plans, SOPs, posts, reports, and recommendations.\n\nInsights:\nThe most useful first step is to upload one strong source. Within the first minute, you should have a clear summary and a practical next action.\n\nActionable Output:\nAdd your first course/file/video URL above, assign it to one or more tiers, choose a drip rule, then tap Upload and Structure.`;
+  return `Summary:\nSmartLibrary is ready for course creators. Instead of pasting raw text, creators can define uploaded course assets, gate them by custom tiers, apply drip rules, and generate structured learning experiences.\n\nKey Points:\n1. Create unlimited creator-defined tiers such as Free, Premium, VIP, Gold, Cohort, or Inner Circle.\n2. Assign uploaded course assets to tier categories.\n3. Add time-based or conditional drip logic.\n4. Generate modules, lessons, exercises, assignments, quizzes, and interactive checkpoints.\n\nInsights:\nThe product should help creators turn files and videos into guided learning journeys, not static libraries. The highest-value workflow is upload, structure, gate, drip, gamify, and improve completion.\n\nActionable Output:\nStart by selecting an upload asset type, choosing tiers, setting a drip rule, then tapping Create Upload Blueprint.`;
 }
 
 function formatNumber(value: number) {
@@ -595,6 +552,39 @@ const styles = StyleSheet.create({
     marginTop: 4,
     textTransform: "uppercase",
   },
+  platformCard: {
+    backgroundColor: "#0B1224",
+  },
+  platformTitle: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: "900",
+    marginTop: spacing.sm,
+  },
+  featureGrid: {
+    marginTop: spacing.md,
+    gap: spacing.sm,
+  },
+  featureItem: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    alignItems: "flex-start",
+  },
+  featureBullet: {
+    color: colors.primary2,
+    fontSize: 16,
+    fontWeight: "900",
+  },
+  featureText: {
+    color: colors.muted,
+    fontSize: 12,
+    lineHeight: 18,
+    flex: 1,
+  },
+  roleCard: {
+    padding: spacing.md,
+    backgroundColor: colors.surface,
+  },
   gameCard: {
     marginTop: spacing.md,
     backgroundColor: "#0D1629",
@@ -606,52 +596,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     marginBottom: spacing.sm,
   },
-  managerBox: {
-    marginBottom: spacing.md,
-    borderRadius: radius.md,
-    backgroundColor: "rgba(255,255,255,0.025)",
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-    padding: spacing.md,
-  },
-  inlineRow: {
-    flexDirection: "row",
-    gap: spacing.sm,
-    alignItems: "center",
-  },
-  inlineInput: {
-    flex: 1,
-    marginBottom: 0,
-  },
-  smallButton: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 13,
-  },
-  smallButtonText: {
-    color: colors.white,
-    fontWeight: "900",
-  },
-  input: {
-    backgroundColor: colors.surface2,
-    color: colors.text,
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    fontSize: 14,
-    marginBottom: spacing.md,
-  },
-  contentInput: {
-    minHeight: 150,
-    lineHeight: 20,
-  },
-  questionInput: {
-    minHeight: 82,
-    lineHeight: 20,
-  },
   label: {
     color: colors.muted,
     fontSize: 12,
@@ -659,6 +603,12 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     textTransform: "uppercase",
     letterSpacing: 0.7,
+  },
+  helperText: {
+    color: colors.faint,
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: spacing.sm,
   },
   typeRow: {
     flexDirection: "row",
@@ -687,6 +637,36 @@ const styles = StyleSheet.create({
   typeChipTextActive: {
     color: colors.primary2,
   },
+  smallChip: {
+    borderRadius: 999,
+    backgroundColor: "rgba(109, 94, 248, 0.12)",
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  smallChipText: {
+    color: colors.primary2,
+    fontSize: 11,
+    fontWeight: "900",
+  },
+  dripCard: {
+    backgroundColor: colors.surface2,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    padding: spacing.md,
+  },
+  dripCardActive: {
+    borderColor: colors.primary2,
+    backgroundColor: "rgba(0, 212, 255, 0.1)",
+  },
+  dripText: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  dripTextActive: {
+    color: colors.text,
+  },
   statusCard: {
     marginTop: spacing.md,
     flexDirection: "row",
@@ -707,7 +687,8 @@ const styles = StyleSheet.create({
   },
   actionRow: {
     gap: spacing.sm,
-    paddingBottom: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
   },
   actionChip: {
     paddingHorizontal: spacing.md,
@@ -737,12 +718,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 22,
   },
-  shareButton: {
-    marginTop: spacing.lg,
-    backgroundColor: colors.surface3,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
   sourceList: {
     gap: spacing.md,
   },
@@ -770,24 +745,15 @@ const styles = StyleSheet.create({
   libraryCard: {
     padding: spacing.md,
   },
-  libraryCardActive: {
-    borderColor: colors.primary2,
-    backgroundColor: "#111A31",
-  },
   libraryTop: {
     flexDirection: "row",
     gap: spacing.md,
     alignItems: "flex-start",
   },
-  removeButton: {
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    backgroundColor: "rgba(255, 107, 136, 0.12)",
-  },
-  removeText: {
-    color: colors.danger,
-    fontSize: 11,
-    fontWeight: "900",
+  resetButton: {
+    marginTop: spacing.xl,
+    backgroundColor: colors.surface3,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
 });
