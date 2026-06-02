@@ -172,11 +172,19 @@ After testing, promote the build from Whop Developer Dashboard → App → Build
 
 ## Deployment performed on 2026-06-02
 
-A Whop React Native development build was uploaded for all platforms and then promoted for production review:
+Initial shell build:
 
 - Web build: `apbu_mcrrwq38aLJaa` — promoted, status `pending`, production `false`
 - iOS build: `apbu_SLh5eCpHijNhE` — promoted, status `pending`, production `false`
 - Android build: `apbu_z9XOlG1j2duHV` — promoted, status `pending`, production `false`
+
+Functional MVP build after Masterprompt integration:
+
+- Web build: `apbu_sFtUfu16P1VH3` — promoted, status `pending`, production `false`
+- iOS build: `apbu_bLqNFdtoWixiL` — promoted, status `pending`, production `false`
+- Android build: `apbu_mUUR4aYKKwsbt` — promoted, status `pending`, production `false`
+
+The functional MVP adds local library storage, paste/link ingestion, retrieval-first answering, transform actions, source references, selectable/share-ready outputs, and Vercel AI API routes with a deterministic fallback when no Gemini key is configured.
 
 Supported view types uploaded:
 

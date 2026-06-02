@@ -11,7 +11,7 @@ The original Google Stitch / AI Studio output was a React DOM web app. That can 
 
 Whop React Native apps are uploaded to Whop as app builds. Vercel should be used as your API/server origin, not as the native mobile frontend.
 
-## Web/Vercel preview
+## Web/Vercel preview and API
 
 ```bash
 npm install
@@ -20,6 +20,21 @@ npm run build
 ```
 
 The Vercel SPA fallback is configured in [`vercel.json`](./vercel.json).
+
+Serverless API routes were added for the Whop native app:
+
+```txt
+api/ingest.ts      Fetches and extracts readable text from links.
+api/transform.ts   Generates SmartLibrary outputs from retrieved source excerpts.
+```
+
+For AI-enhanced generation, set one of these environment variables in Vercel:
+
+```env
+GEMINI_API_KEY="..."
+```
+
+If no Gemini key is configured, the API returns a deterministic grounded fallback so the app remains usable.
 
 ## Whop React Native app
 

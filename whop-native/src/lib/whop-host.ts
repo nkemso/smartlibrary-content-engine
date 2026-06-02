@@ -53,3 +53,20 @@ export function navigate(path: string[], params: Record<string, string> = {}) {
     // no-op outside Whop host
   }
 }
+
+export function cacheGet(key: string) {
+  try {
+    const result = __internal_execSync("cacheGet", { key });
+    return result.data ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function cacheSet(key: string, data: string) {
+  try {
+    __internal_execSync("cacheSet", { key, data });
+  } catch {
+    // no-op outside Whop host
+  }
+}
