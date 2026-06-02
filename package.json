@@ -1,5 +1,5 @@
 {
-  "name": "react-example",
+  "name": "smartlibrary-content-engine",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -8,7 +8,12 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "whop:install": "npm --prefix whop-native install --legacy-peer-deps",
+    "whop:typecheck": "npm --prefix whop-native run typecheck",
+    "whop:build": "npm --prefix whop-native run build",
+    "whop:ship": "npm --prefix whop-native run ship",
+    "whop:preview": "npm --prefix whop-native run preview"
   },
   "dependencies": {
     "@google/generative-ai": "^0.1.0",

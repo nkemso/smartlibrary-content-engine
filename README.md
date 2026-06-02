@@ -1,20 +1,117 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# SmartLibrary Content Engine
 
-# Run and deploy your AI Studio app
+SmartLibrary Content Engine now contains two deployable surfaces:
 
-This contains everything you need to run your app locally.
+1. **Existing Vite/React web preview** at the repository root, used by Vercel.
+2. **Whop React Native app** in [`whop-native/`](./whop-native), used for native Whop iOS/Android/web app builds.
 
-View your app in AI Studio: https://ai.studio/apps/d61376d0-48d0-4753-a97e-54b671598022
+## Why the Whop React Native folder was added
 
-## Run Locally
+The original Google Stitch / AI Studio output was a React DOM web app. That can render in a browser, but it is not a Whop React Native build and it does not export Whop-native views like `ExperienceView` or `DashboardView`.
 
-**Prerequisites:**  Node.js
+Whop React Native apps are uploaded to Whop as app builds. Vercel should be used as your API/server origin, not as the native mobile frontend.
 
+## Web/Vercel preview
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+```bash
+npm install
+npm run dev
+npm run build
+```
+
+The Vercel SPA fallback is configured in [`vercel.json`](./vercel.json).
+
+## Whop React Native app
+
+The native app lives in:
+
+```txt
+whop-native/
+```
+
+It includes:
+
+```txt
+whop-native/src/views/experience-view.tsx
+whop-native/src/views/dashboard-view.tsx
+whop-native/src/views/discover-view.tsx
+```
+
+### Requirements
+
+- Node.js 22+
+- pnpm 9.15+ recommended by Whop
+- Whop developer app credentials from <https://whop.com/dashboard/developer>
+
+### Install
+
+```bash
+cd whop-native
+corepack enable
+corepack prepare pnpm@9.15.0 --activate
+pnpm install
+cp .env.example .env.local
+```
+
+Fill `.env.local`:
+
+```env
+WHOP_API_KEY="..."
+NEXT_PUBLIC_WHOP_APP_ID="app_..."
+NEXT_PUBLIC_WHOP_AGENT_USER_ID="user_..."
+NEXT_PUBLIC_WHOP_COMPANY_ID="biz_..."
+```
+
+### Build and upload a development build
+
+```bash
+pnpm ship
+```
+
+Preview it on your phone:
+
+```bash
+pnpm preview
+```
+
+In the Whop mobile app, shake your phone to enable dev mode so development builds become visible.
+
+### Promote to production
+
+1. Test the dev build inside the Whop mobile app.
+2. Go to Whop Developer Dashboard → your app → Builds.
+3. Promote the tested build to production.
+
+## Root helper scripts
+
+From the repo root you can also run:
+
+```bash
+npm run whop:install
+npm run whop:typecheck
+npm run whop:build
+npm run whop:ship
+npm run whop:preview
+```
+
+## Important Whop dashboard URL checklist
+
+The Cloudflare `Error 1003: Direct IP access not allowed` is usually caused by using an IP address instead of a real hostname.
+
+In Whop Developer Dashboard:
+
+- Do **not** paste any Cloudflare/Vercel IP address.
+- Use only a hostname such as:
+
+```txt
+https://smartlibrary-content-engine.vercel.app
+```
+
+- If using React Native, upload builds with `pnpm ship` from `whop-native/`.
+- If using Vercel, use it for API routes/server calls. Do not expect a Vercel-hosted React DOM app to become a Whop React Native mobile app automatically.
+
+## Original AI Studio reference
+
+Original AI Studio app link:
+
+<https://ai.studio/apps/d61376d0-48d0-4753-a97e-54b671598022>

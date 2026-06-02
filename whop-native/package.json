@@ -1,0 +1,31 @@
+{
+  "name": "smartlibrary-whop-react-native",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "whop-react-native build",
+    "upload": "whop-react-native upload",
+    "clean": "whop-react-native clean",
+    "ship": "whop-react-native ship",
+    "ship:web": "whop-react-native ship --web",
+    "ship:mobile": "whop-react-native ship --ios --android",
+    "preview": "whop-react-native install",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@whop/react-native": "^0.2.1",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-native": "0.80.0",
+    "react-native-web": "0.21.1",
+    "react-native-reanimated": "3.18.0"
+  },
+  "devDependencies": {
+    "@types/react": "19.1.0",
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=9.15"
+  }
+}
