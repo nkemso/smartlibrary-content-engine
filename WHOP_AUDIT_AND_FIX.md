@@ -172,11 +172,11 @@ After testing, promote the build from Whop Developer Dashboard → App → Build
 
 ## Deployment performed on 2026-06-02
 
-A Whop React Native development build was uploaded for all platforms:
+A Whop React Native development build was uploaded for all platforms and then promoted for production review:
 
-- Web build: `apbu_mcrrwq38aLJaa`
-- iOS build: `apbu_SLh5eCpHijNhE`
-- Android build: `apbu_z9XOlG1j2duHV`
+- Web build: `apbu_mcrrwq38aLJaa` — promoted, status `pending`, production `false`
+- iOS build: `apbu_SLh5eCpHijNhE` — promoted, status `pending`, production `false`
+- Android build: `apbu_z9XOlG1j2duHV` — promoted, status `pending`, production `false`
 
 Supported view types uploaded:
 
@@ -184,11 +184,13 @@ Supported view types uploaded:
 - `discover`
 - `hub`
 
-Promote/test builds from:
+Review/test builds from:
 
 ```txt
 https://whop.com/dashboard/biz_NmM39BeWPkA2dn/developer/apps/app_CRHI4R4jykDetI/builds/
 ```
+
+Note: `pending` means Whop accepted the promotion request, but the build is not production/live until Whop approval/review completes.
 
 ## Future work
 
