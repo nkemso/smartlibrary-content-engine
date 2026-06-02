@@ -170,6 +170,26 @@ After testing, promote the build from Whop Developer Dashboard → App → Build
 - For React Native, rely on Whop uploaded builds for the mobile frontend.
 - Use Vercel only for API routes/server-side AI operations.
 
+## Deployment performed on 2026-06-02
+
+A Whop React Native development build was uploaded for all platforms:
+
+- Web build: `apbu_mcrrwq38aLJaa`
+- iOS build: `apbu_SLh5eCpHijNhE`
+- Android build: `apbu_z9XOlG1j2duHV`
+
+Supported view types uploaded:
+
+- `dashboard`
+- `discover`
+- `hub`
+
+Promote/test builds from:
+
+```txt
+https://whop.com/dashboard/biz_NmM39BeWPkA2dn/developer/apps/app_CRHI4R4jykDetI/builds/
+```
+
 ## Future work
 
 - Move Gemini/Google AI calls into server-side API routes only.
