@@ -200,10 +200,10 @@ export function SmartLibraryApp(props: SmartLibraryProps) {
   return (
     <Shell>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        <Header title="SmartLibrary" subtitle="AI course hosting and intelligent learning engine" badge={props.mode === "dashboard" ? "Admin" : "Native"} />
+        <Header title="DASHBOARD" subtitle="Tap the dashboard menu to navigate" badge={props.mode === "dashboard" ? "Admin" : "Native"} />
 
-        <Hero libraryCount={library.length} tierCount={tiers.length} totalWords={totalWords} mode={props.mode} />
-        <WorkspaceMenu mode={props.mode} activeTab={activeTab} setActiveTab={setActiveTab} />
+        <WorkspaceMenu mode={props.mode} activeTab={activeTab} setActiveTab={setActiveTab} libraryCount={library.length} tierCount={tiers.length} />
+        <ActiveDashboardMenus activeTab={activeTab} setActiveTab={setActiveTab} />
         <StatusCard stage={stage} text={stageText} busy={isBusy} />
 
         {activeTab === "learner" ? (
@@ -262,7 +262,7 @@ function Hero({ libraryCount, tierCount, totalWords, mode }: { libraryCount: num
   );
 }
 
-function WorkspaceMenu({ mode, activeTab, setActiveTab }: { mode: SmartLibraryProps["mode"]; activeTab: WorkspaceTab; setActiveTab: (tab: WorkspaceTab) => void }) {
+function WorkspaceMenu({ mode, activeTab, setActiveTab, libraryCount, tierCount }: { mode: SmartLibraryProps["mode"]; activeTab: WorkspaceTab; setActiveTab: (tab: WorkspaceTab) => void; libraryCount: number; tierCount: number }) {
   const [open, setOpen] = useState(false);
   const items = getWorkspaceItems(mode);
   const active = items.find((item) => item.id === activeTab) || items[0];
@@ -276,9 +276,13 @@ function WorkspaceMenu({ mode, activeTab, setActiveTab }: { mode: SmartLibraryPr
     <Card style={styles.menuCard}>
       <Pressable onPress={() => setOpen(!open)} style={styles.menuButton}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.menuLabel}>Workspace menu</Text>
+          <Text style={styles.menuLabel}>DASHBOARD</Text>
           <Text style={styles.menuTitle}>{active?.label || "Dashboard"}</Text>
           <Text style={styles.menuDescription}>{active?.description || "Open a workspace"}</Text>
+          <View style={styles.dashboardStats}>
+            <Text style={styles.dashboardStat}>{libraryCount} assets</Text>
+            <Text style={styles.dashboardStat}>{tierCount} tiers</Text>
+          </View>
         </View>
         <Text style={styles.menuChevron}>{open ? "×" : "⌄"}</Text>
       </Pressable>
@@ -294,6 +298,100 @@ function WorkspaceMenu({ mode, activeTab, setActiveTab }: { mode: SmartLibraryPr
       ) : null}
     </Card>
   );
+}
+
+
+function ActiveDashboardMenus({ activeTab, setActiveTab }: { activeTab: WorkspaceTab; setActiveTab: (tab: WorkspaceTab) => void }) {
+  const menus = getSubMenus(activeTab);
+  return (
+    <Card style={styles.subMenuCard}>
+      <View style={styles.subMenuHeader}>
+        <Text style={styles.subMenuTitle}>Menu</Text>
+        <Text style={styles.subMenuActive}>{getDashboardName(activeTab)}</Text>
+      </View>
+      <View style={styles.subMenuGrid}>
+        {menus.map((menu) => (
+          <Pressable key={menu.label} onPress={() => menu.goTo ? setActiveTab(menu.goTo) : undefined} style={styles.subMenuItem}>
+            <Text style={styles.subMenuItemTitle}>{menu.label}</Text>
+            <Text style={styles.subMenuItemText}>{menu.text}</Text>
+          </Pressable>
+        ))}
+      </View>
+    </Card>
+  );
+}
+
+function getDashboardName(tab: WorkspaceTab) {
+  if (tab === "learner") return "User Dashboard";
+  if (tab === "creator") return "Creator Studio";
+  if (tab === "admin") return "Admin Dashboard";
+  if (tab === "owner") return "Owner Super Admin";
+  if (tab === "ai") return "AI Tutor";
+  if (tab === "certificates") return "Certificates";
+  return "Automation";
+}
+
+function getSubMenus(tab: WorkspaceTab): Array<{ label: string; text: string; goTo?: WorkspaceTab }> {
+  if (tab === "learner") {
+    return [
+      { label: "Courses", text: "Enrolled courses" },
+      { label: "Progress", text: "Streaks and XP" },
+      { label: "Path", text: "Next lessons" },
+      { label: "AI Tutor", text: "Ask for help", goTo: "ai" },
+      { label: "Certificates", text: "Rewards", goTo: "certificates" },
+    ];
+  }
+  if (tab === "creator") {
+    return [
+      { label: "Upload", text: "Course assets" },
+      { label: "Builder", text: "Modules/lessons" },
+      { label: "Tiers", text: "Gate content" },
+      { label: "Drip", text: "Unlock rules" },
+      { label: "Publish", text: "Go live" },
+      { label: "AI Tutor", text: "Course assistant", goTo: "ai" },
+    ];
+  }
+  if (tab === "admin") {
+    return [
+      { label: "Users", text: "Roles/access" },
+      { label: "Courses", text: "Approvals" },
+      { label: "Moderation", text: "Community" },
+      { label: "Analytics", text: "Engagement" },
+      { label: "Settings", text: "Workspace" },
+      { label: "Owner", text: "Platform", goTo: "owner" },
+    ];
+  }
+  if (tab === "owner") {
+    return [
+      { label: "Downloads", text: "App installs" },
+      { label: "Usage", text: "Active users" },
+      { label: "Health", text: "System uptime" },
+      { label: "Costs", text: "AI/storage" },
+      { label: "Privacy", text: "No creator content" },
+    ];
+  }
+  if (tab === "ai") {
+    return [
+      { label: "Explain", text: "Lesson help" },
+      { label: "Quiz", text: "Generate quiz" },
+      { label: "Next", text: "Recommend lesson" },
+      { label: "Assignment", text: "Create task" },
+    ];
+  }
+  if (tab === "certificates") {
+    return [
+      { label: "Certificates", text: "Download" },
+      { label: "Badges", text: "Rewards" },
+      { label: "Community", text: "Discuss" },
+      { label: "Verification", text: "Codes" },
+    ];
+  }
+  return [
+    { label: "Webhooks", text: "Events" },
+    { label: "Audio", text: "To course" },
+    { label: "Unlocks", text: "Rules" },
+    { label: "Search", text: "Global" },
+  ];
 }
 
 function getWorkspaceItems(mode: SmartLibraryProps["mode"]): Array<{ id: WorkspaceTab; label: string; description: string }> {
@@ -688,6 +786,7 @@ const styles = StyleSheet.create({
   menuCard: {
     marginBottom: spacing.md,
     backgroundColor: "#0B1224",
+    borderColor: "rgba(0, 212, 255, 0.22)",
   },
   menuButton: {
     flexDirection: "row",
@@ -712,6 +811,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17,
     marginTop: 4,
+  },
+  dashboardStats: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  dashboardStat: {
+    color: colors.primary2,
+    fontSize: 11,
+    fontWeight: "900",
   },
   menuChevron: {
     color: colors.primary2,
@@ -746,6 +855,52 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 16,
     marginTop: 4,
+  },
+  subMenuCard: {
+    marginBottom: spacing.md,
+    backgroundColor: "#090F1F",
+  },
+  subMenuHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: spacing.md,
+  },
+  subMenuTitle: {
+    color: colors.faint,
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
+  subMenuActive: {
+    color: colors.primary2,
+    fontSize: 12,
+    fontWeight: "900",
+  },
+  subMenuGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+  },
+  subMenuItem: {
+    width: "48%",
+    minHeight: 74,
+    backgroundColor: colors.surface2,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    padding: spacing.md,
+  },
+  subMenuItemTitle: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: "900",
+  },
+  subMenuItemText: {
+    color: colors.muted,
+    fontSize: 11,
+    marginTop: 5,
   },
   onboardingCard: {
     backgroundColor: "#101A33",

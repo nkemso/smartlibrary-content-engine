@@ -226,7 +226,15 @@ Current production build is the previous non-crashing organized dashboard UI. Th
 - Android build: `apbu_9A2yqHVWiHpfZ` — promoted, status `pending`, production `false`
 - Web build: `apbu_UXxGGrWMomGwO` — promoted, status `pending`, production `false`
 
-The access-structured update keeps the stable component base but adds a clean dropdown-style workspace menu and role visibility rules: members see only User Dashboard, AI Tutor, Certificates & Community; creators/admins see User Dashboard preview, Creator Studio, Admin Dashboard, Owner Super Admin, Automation, and AI Tutor; owner super admin is limited to platform analytics/app usage and explicitly excludes access to creators' private content. The stable feature set includes upload-first course asset flow, creator-defined unlimited tiers, tier gating metadata, time/condition drip metadata, course structuring actions, interactive lesson outputs, quiz/assignment generation, learning path preview, student progress widgets, instructor/admin analytics previews, gamification UI, role permission matrix, AI tutor/search/webhook panels, certificate/community sections, Groq/OpenRouter/Gemini/OpenAI backend routing, source references, selectable/share-ready outputs, Vercel AI API routes with deterministic fallback when no model key is configured, PostgreSQL schema blueprint, webhook route, learning platform route, and a React Native error boundary/safe-mode screen.
+The access-structured update keeps the stable component base but adds a clean dropdown-style workspace menu and role visibility rules: members see only User Dashboard, AI Tutor, Certificates & Community; creators/admins see User Dashboard preview, Creator Studio, Admin Dashboard, Owner Super Admin, Automation, and AI Tutor; owner super admin is limited to platform analytics/app usage and explicitly excludes access to creators' private content.
+
+Dashboard-menu refinement build:
+
+- iOS build: `apbu_ieFuvGPGTFApI` — promoted, status `pending`, production `false`
+- Web build: `apbu_5l0juKkn2EUxU` — promoted, status `pending`, production `false`
+- Android build: `apbu_m2jz8x4JxAQGw` — promoted, status `pending`, production `false`
+
+This refinement removes the large marketing hero from the opening screen, changes the in-app header title to `DASHBOARD`, places dashboard groups inside a dropdown-style Dashboard card, and adds a compact submenu grid for the selected dashboard group. The stable feature set includes upload-first course asset flow, creator-defined unlimited tiers, tier gating metadata, time/condition drip metadata, course structuring actions, interactive lesson outputs, quiz/assignment generation, learning path preview, student progress widgets, instructor/admin analytics previews, gamification UI, role permission matrix, AI tutor/search/webhook panels, certificate/community sections, Groq/OpenRouter/Gemini/OpenAI backend routing, source references, selectable/share-ready outputs, Vercel AI API routes with deterministic fallback when no model key is configured, PostgreSQL schema blueprint, webhook route, learning platform route, and a React Native error boundary/safe-mode screen.
 
 Supported view types uploaded:
 
