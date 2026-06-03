@@ -208,13 +208,19 @@ Organized dashboard premium UI build:
 - Android build: `apbu_QUz8W2ED4uLZW` — promoted, status `pending`, production `false`
 - iOS build: `apbu_BNppwtII6tj9f` — promoted, status `pending`, production `false`
 
-Role-specific clean UI build:
+Role-specific clean UI build, rolled back due runtime crash:
 
-- iOS build: `apbu_zIfaiq5dYkV7d` — promoted, status `pending`, production `false`
-- Web build: `apbu_uf2KLlXw1wB8q` — promoted, status `pending`, production `false`
-- Android build: `apbu_sXEnJue3xYbER` — promoted, status `pending`, production `false`
+- iOS build: `apbu_zIfaiq5dYkV7d` — approved, production `false`
+- Web build: `apbu_uf2KLlXw1wB8q` — approved, production `false`
+- Android build: `apbu_sXEnJue3xYbER` — approved, production `false`
 
-The current build removes the confused all-in-one layout and uses role-specific workspaces. Experience/member view shows Learner, AI Tutor, and Certificates only. Dashboard/admin view shows Overview, Builder, Admin, and Automation only. Discover view shows Overview, Learner, and Creator preview. It includes upload-first course asset flow, creator-defined unlimited tiers, tier gating metadata, time/condition drip metadata, course structuring actions, interactive lesson outputs, quiz/assignment generation, learning path preview, student progress widgets, instructor/admin analytics previews, gamification UI, role permission matrix, AI tutor/search/webhook panels, certificate/community sections, Groq/OpenRouter/Gemini/OpenAI backend routing, source references, selectable/share-ready outputs, Vercel AI API routes with deterministic fallback when no model key is configured, PostgreSQL schema blueprint, webhook route, learning platform route, and a React Native error boundary/safe-mode screen to prevent total blank screens if a device-specific runtime error occurs.
+Rollback performed after crash report:
+
+- Web production restored to `apbu_B6SIStU1qWnKK`
+- Android production restored to `apbu_QUz8W2ED4uLZW`
+- iOS production restored to `apbu_BNppwtII6tj9f`
+
+Current production build is the previous non-crashing organized dashboard UI. The codebase has also been aligned back to that stable UI to prevent future deployments from reintroducing the role-specific crash. The stable build includes upload-first course asset flow, creator-defined unlimited tiers, tier gating metadata, time/condition drip metadata, course structuring actions, interactive lesson outputs, quiz/assignment generation, learning path preview, student progress widgets, instructor/admin analytics previews, gamification UI, role permission matrix, AI tutor/search/webhook panels, certificate/community sections, Groq/OpenRouter/Gemini/OpenAI backend routing, source references, selectable/share-ready outputs, Vercel AI API routes with deterministic fallback when no model key is configured, PostgreSQL schema blueprint, webhook route, learning platform route, and a React Native error boundary/safe-mode screen.
 
 Supported view types uploaded:
 
