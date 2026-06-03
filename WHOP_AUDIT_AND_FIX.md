@@ -220,7 +220,13 @@ Rollback performed after crash report:
 - Android production restored to `apbu_QUz8W2ED4uLZW`
 - iOS production restored to `apbu_BNppwtII6tj9f`
 
-Current production build is the previous non-crashing organized dashboard UI. The codebase has also been aligned back to that stable UI to prevent future deployments from reintroducing the role-specific crash. The stable build includes upload-first course asset flow, creator-defined unlimited tiers, tier gating metadata, time/condition drip metadata, course structuring actions, interactive lesson outputs, quiz/assignment generation, learning path preview, student progress widgets, instructor/admin analytics previews, gamification UI, role permission matrix, AI tutor/search/webhook panels, certificate/community sections, Groq/OpenRouter/Gemini/OpenAI backend routing, source references, selectable/share-ready outputs, Vercel AI API routes with deterministic fallback when no model key is configured, PostgreSQL schema blueprint, webhook route, learning platform route, and a React Native error boundary/safe-mode screen.
+Current production build is the previous non-crashing organized dashboard UI. The codebase was aligned back to that stable UI after rollback. A smaller access-structured update was then created on top of the stable UI:
+
+- iOS build: `apbu_nkQD0mGjNz9ZF` — promoted, status `pending`, production `false`
+- Android build: `apbu_9A2yqHVWiHpfZ` — promoted, status `pending`, production `false`
+- Web build: `apbu_UXxGGrWMomGwO` — promoted, status `pending`, production `false`
+
+The access-structured update keeps the stable component base but adds a clean dropdown-style workspace menu and role visibility rules: members see only User Dashboard, AI Tutor, Certificates & Community; creators/admins see User Dashboard preview, Creator Studio, Admin Dashboard, Owner Super Admin, Automation, and AI Tutor; owner super admin is limited to platform analytics/app usage and explicitly excludes access to creators' private content. The stable feature set includes upload-first course asset flow, creator-defined unlimited tiers, tier gating metadata, time/condition drip metadata, course structuring actions, interactive lesson outputs, quiz/assignment generation, learning path preview, student progress widgets, instructor/admin analytics previews, gamification UI, role permission matrix, AI tutor/search/webhook panels, certificate/community sections, Groq/OpenRouter/Gemini/OpenAI backend routing, source references, selectable/share-ready outputs, Vercel AI API routes with deterministic fallback when no model key is configured, PostgreSQL schema blueprint, webhook route, learning platform route, and a React Native error boundary/safe-mode screen.
 
 Supported view types uploaded:
 

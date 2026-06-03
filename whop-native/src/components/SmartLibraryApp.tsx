@@ -22,7 +22,7 @@ type SmartLibraryProps =
   | ({ mode: "discover" } & DiscoverViewProps);
 
 type ProcessingStage = "idle" | "retrieving" | "thinking" | "ready" | "error";
-type WorkspaceTab = "learner" | "creator" | "admin" | "ai" | "automation";
+type WorkspaceTab = "learner" | "creator" | "admin" | "owner" | "ai" | "automation" | "certificates";
 
 const API_FALLBACK = "https://smartlibrary-content-engine.vercel.app";
 
@@ -63,7 +63,7 @@ export function SmartLibraryApp(props: SmartLibraryProps) {
   const scopeId = props.mode === "experience" ? props.experienceId : props.mode === "dashboard" ? props.companyId : "discover";
   const cacheKey = `smartlibrary:v4:premium:${userId}:${scopeId}`;
 
-  const [activeTab, setActiveTab] = useState<WorkspaceTab>(props.mode === "dashboard" ? "admin" : "learner");
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>(props.mode === "dashboard" ? "creator" : "learner");
   const [library, setLibrary] = useState<LibraryItem[]>([]);
   const [tiers, setTiers] = useState<ContentTier[]>([
     { id: "tier_free", name: "Free", description: "Public starter content", color: colors.primary2 },
@@ -74,7 +74,7 @@ export function SmartLibraryApp(props: SmartLibraryProps) {
   const [selectedDrip, setSelectedDrip] = useState(dripPresets[0] as string);
   const [activeAction, setActiveAction] = useState<TransformAction>("Structure Course");
   const [stage, setStage] = useState<ProcessingStage>("idle");
-  const [stageText, setStageText] = useState("Platform ready. Choose a workspace section to begin.");
+  const [stageText, setStageText] = useState("Use the menu to open your workspace.");
   const [output, setOutput] = useState(firstRunOutput());
   const [sources, setSources] = useState<RetrievedSource[]>([]);
 
@@ -203,7 +203,7 @@ export function SmartLibraryApp(props: SmartLibraryProps) {
         <Header title="SmartLibrary" subtitle="AI course hosting and intelligent learning engine" badge={props.mode === "dashboard" ? "Admin" : "Native"} />
 
         <Hero libraryCount={library.length} tierCount={tiers.length} totalWords={totalWords} mode={props.mode} />
-        <TabBar activeTab={activeTab} setActiveTab={setActiveTab} />
+        <WorkspaceMenu mode={props.mode} activeTab={activeTab} setActiveTab={setActiveTab} />
         <StatusCard stage={stage} text={stageText} busy={isBusy} />
 
         {activeTab === "learner" ? (
@@ -228,8 +228,12 @@ export function SmartLibraryApp(props: SmartLibraryProps) {
           />
         ) : activeTab === "admin" ? (
           <AdminDashboard tiers={tiers} library={library} />
+        ) : activeTab === "owner" ? (
+          <OwnerDashboard />
         ) : activeTab === "ai" ? (
           <AITutorWorkspace output={output} sources={sources} isBusy={isBusy} transform={transform} />
+        ) : activeTab === "certificates" ? (
+          <CertificatesAndCommunity />
         ) : (
           <AutomationCenter clearWorkspace={clearWorkspace} />
         )}
@@ -258,29 +262,76 @@ function Hero({ libraryCount, tierCount, totalWords, mode }: { libraryCount: num
   );
 }
 
-function TabBar({ activeTab, setActiveTab }: { activeTab: WorkspaceTab; setActiveTab: (tab: WorkspaceTab) => void }) {
-  const tabs: Array<{ id: WorkspaceTab; label: string }> = [
-    { id: "learner", label: "Learner" },
-    { id: "creator", label: "Creator" },
-    { id: "admin", label: "Admin" },
-    { id: "ai", label: "AI Tutor" },
-    { id: "automation", label: "Automation" },
-  ];
+function WorkspaceMenu({ mode, activeTab, setActiveTab }: { mode: SmartLibraryProps["mode"]; activeTab: WorkspaceTab; setActiveTab: (tab: WorkspaceTab) => void }) {
+  const [open, setOpen] = useState(false);
+  const items = getWorkspaceItems(mode);
+  const active = items.find((item) => item.id === activeTab) || items[0];
+
+  function choose(tab: WorkspaceTab) {
+    setActiveTab(tab);
+    setOpen(false);
+  }
+
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabRow}>
-      {tabs.map((tab) => (
-        <Pressable key={tab.id} onPress={() => setActiveTab(tab.id)} style={[styles.tab, activeTab === tab.id && styles.tabActive]}>
-          <Text style={[styles.tabText, activeTab === tab.id && styles.tabTextActive]}>{tab.label}</Text>
-        </Pressable>
-      ))}
-    </ScrollView>
+    <Card style={styles.menuCard}>
+      <Pressable onPress={() => setOpen(!open)} style={styles.menuButton}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.menuLabel}>Workspace menu</Text>
+          <Text style={styles.menuTitle}>{active?.label || "Dashboard"}</Text>
+          <Text style={styles.menuDescription}>{active?.description || "Open a workspace"}</Text>
+        </View>
+        <Text style={styles.menuChevron}>{open ? "×" : "⌄"}</Text>
+      </Pressable>
+      {open ? (
+        <View style={styles.menuList}>
+          {items.map((item) => (
+            <Pressable key={item.id} onPress={() => choose(item.id)} style={[styles.menuItem, activeTab === item.id && styles.menuItemActive]}>
+              <Text style={[styles.menuItemTitle, activeTab === item.id && styles.menuItemTitleActive]}>{item.label}</Text>
+              <Text style={styles.menuItemDescription}>{item.description}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+    </Card>
   );
+}
+
+function getWorkspaceItems(mode: SmartLibraryProps["mode"]): Array<{ id: WorkspaceTab; label: string; description: string }> {
+  if (mode === "experience") {
+    return [
+      { id: "learner", label: "User Dashboard", description: "Courses, progress, streaks, certificates and your learning path" },
+      { id: "ai", label: "AI Tutor", description: "Ask questions and get help from course materials" },
+      { id: "certificates", label: "Certificates & Community", description: "Rewards, discussions, badges and completion status" },
+    ];
+  }
+
+  if (mode === "dashboard") {
+    return [
+      { id: "learner", label: "User Dashboard", description: "Preview the student experience without exposing creator settings" },
+      { id: "creator", label: "Creator Studio", description: "Upload, publish, gate, drip and structure course content" },
+      { id: "admin", label: "Admin Dashboard", description: "Manage users, courses, moderation and analytics" },
+      { id: "owner", label: "Owner Super Admin", description: "App downloads, usage, health and platform analytics only" },
+      { id: "automation", label: "Automation", description: "Webhooks, audio-to-course, unlock rules and realtime workflows" },
+      { id: "ai", label: "AI Tutor", description: "Preview AI learning assistant behavior" },
+    ];
+  }
+
+  return [
+    { id: "learner", label: "User Dashboard", description: "Preview learner-facing course experience" },
+    { id: "creator", label: "Creator Studio", description: "Preview creator course-building features" },
+    { id: "ai", label: "AI Tutor", description: "Preview intelligent learning assistant" },
+  ];
 }
 
 function LearnerDashboard({ library, tiers, setActiveTab }: { library: LibraryItem[]; tiers: ContentTier[]; setActiveTab: (tab: WorkspaceTab) => void }) {
   return (
     <>
-      <SectionTitle title="Learner dashboard" action="Student view" />
+      <SectionTitle title="User dashboard" action="Learner only" />
+      <Card style={styles.onboardingCard}>
+        <Pill label="Welcome to your learning hub" tone="success" />
+        <Text style={styles.onboardingTitle}>Your courses, progress, tutor, community and certificates live here.</Text>
+        <Text style={styles.onboardingText}>No creator settings. No admin clutter. Just the next best action for your learning journey.</Text>
+      </Card>
       <Card style={styles.platformCard}>
         <View style={styles.statRow}>
           <MiniStat label="Progress" value="42%" />
@@ -421,6 +472,47 @@ function AdminDashboard({ tiers, library }: { tiers: ContentTier[]; library: Lib
 
       <SectionTitle title="Role permissions" action="RBAC" />
       <View style={styles.sourceList}>{roleCards.map((item) => <RoleCard key={item.role} role={item.role} access={item.access} />)}</View>
+    </>
+  );
+}
+
+
+function OwnerDashboard() {
+  return (
+    <>
+      <SectionTitle title="Owner super admin" action="Platform-only" />
+      <Card style={styles.ownerCard}>
+        <View style={styles.statRow}>
+          <MiniStat label="Downloads" value="2.4K" />
+          <MiniStat label="Active" value="1.1K" />
+          <MiniStat label="Health" value="99%" />
+        </View>
+        <DashboardBlock title="Platform analytics" body="Track app installs, active users, retention, API usage, build health, model routing, webhook volume, and overall product growth." />
+        <DashboardBlock title="Privacy boundary" body="Owner super admin can monitor app usage and infrastructure health, but cannot access creators' private course content or student submissions." />
+        <DashboardBlock title="Business controls" body="Manage global plans, platform settings, abuse reports, uptime, model costs, storage growth, and feature adoption." />
+      </Card>
+    </>
+  );
+}
+
+function CertificatesAndCommunity() {
+  return (
+    <>
+      <SectionTitle title="Certificates" action="Rewards" />
+      <Card style={styles.platformCard}>
+        <View style={styles.statRow}>
+          <MiniStat label="Badges" value="3" />
+          <MiniStat label="Ready" value="1" />
+          <MiniStat label="Code" value="Yes" />
+        </View>
+        <DashboardBlock title="Downloadable certificates" body="Certificates include student name, course title, completion date, instructor name and verification code." />
+        <DashboardBlock title="Completion requirements" body="Unlock certificates after required lessons, quiz score, assignment approval and course completion." />
+      </Card>
+      <SectionTitle title="Community" action="Course space" />
+      <Card style={styles.platformCard}>
+        <DashboardBlock title="Discussion threads" body="Students can participate in discussions, comments, likes and pinned instructor prompts." />
+        <DashboardBlock title="Safe moderation" body="Moderators can flag content, remove harmful posts and keep learning communities focused." />
+      </Card>
     </>
   );
 }
@@ -593,6 +685,89 @@ const styles = StyleSheet.create({
   heroStat: { color: colors.primary2, fontSize: 12, fontWeight: "900" },
   heroTitle: { color: colors.text, fontSize: 26, lineHeight: 32, fontWeight: "900", letterSpacing: -0.8, marginTop: spacing.md },
   heroText: { color: colors.muted, fontSize: 14, lineHeight: 21, marginTop: spacing.sm },
+  menuCard: {
+    marginBottom: spacing.md,
+    backgroundColor: "#0B1224",
+  },
+  menuButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+  },
+  menuLabel: {
+    color: colors.faint,
+    fontSize: 10,
+    fontWeight: "900",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+  menuTitle: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: "900",
+    marginTop: 3,
+  },
+  menuDescription: {
+    color: colors.muted,
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 4,
+  },
+  menuChevron: {
+    color: colors.primary2,
+    fontSize: 28,
+    fontWeight: "900",
+  },
+  menuList: {
+    marginTop: spacing.md,
+    gap: spacing.sm,
+  },
+  menuItem: {
+    borderRadius: radius.md,
+    backgroundColor: colors.surface2,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    padding: spacing.md,
+  },
+  menuItemActive: {
+    borderColor: colors.primary2,
+    backgroundColor: "rgba(0, 212, 255, 0.09)",
+  },
+  menuItemTitle: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: "900",
+  },
+  menuItemTitleActive: {
+    color: colors.primary2,
+  },
+  menuItemDescription: {
+    color: colors.muted,
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 4,
+  },
+  onboardingCard: {
+    backgroundColor: "#101A33",
+    marginBottom: spacing.md,
+  },
+  onboardingTitle: {
+    color: colors.text,
+    fontSize: 20,
+    fontWeight: "900",
+    lineHeight: 25,
+    marginTop: spacing.md,
+  },
+  onboardingText: {
+    color: colors.muted,
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: spacing.sm,
+  },
+  ownerCard: {
+    backgroundColor: "#11162A",
+    borderColor: colors.warning,
+  },
   tabRow: { gap: spacing.sm, paddingVertical: spacing.md },
   tab: { borderRadius: 999, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.borderSoft, paddingHorizontal: 14, paddingVertical: 10 },
   tabActive: { backgroundColor: colors.primary, borderColor: colors.primary },
