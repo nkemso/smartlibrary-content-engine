@@ -22,6 +22,7 @@ type SmartLibraryProps =
   | ({ mode: "discover" } & DiscoverViewProps);
 
 type ProcessingStage = "idle" | "retrieving" | "thinking" | "ready" | "error";
+type WorkspaceTab = "learner" | "creator" | "admin" | "ai" | "automation";
 
 const API_FALLBACK = "https://smartlibrary-content-engine.vercel.app";
 
@@ -44,19 +45,6 @@ const roleCards = [
   { role: "Student", access: "Enroll, learn, ask AI tutor, submit assignments, earn certificates" },
 ];
 
-const platformCapabilities = [
-  "Drag-and-drop course builder blueprint",
-  "Modules, lessons, resources, quizzes, assignments",
-  "AI tutor attached to every lesson",
-  "Audio-to-course automation workflow",
-  "Learning paths with course sequence unlocks",
-  "Certificates with verification codes",
-  "Course community and moderation",
-  "Analytics for completion, engagement, quiz difficulty",
-  "Global search across courses, lessons, transcripts, and resources",
-  "Webhook automation for learning events",
-];
-
 const automationEvents = [
   "audio_uploaded",
   "transcript_processed",
@@ -73,8 +61,9 @@ export function SmartLibraryApp(props: SmartLibraryProps) {
   const host = useMemo(() => getHostDetails(), []);
   const userId = props.currentUserId ?? "anonymous";
   const scopeId = props.mode === "experience" ? props.experienceId : props.mode === "dashboard" ? props.companyId : "discover";
-  const cacheKey = `smartlibrary:v3:safe:${userId}:${scopeId}`;
+  const cacheKey = `smartlibrary:v4:premium:${userId}:${scopeId}`;
 
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>(props.mode === "dashboard" ? "admin" : "learner");
   const [library, setLibrary] = useState<LibraryItem[]>([]);
   const [tiers, setTiers] = useState<ContentTier[]>([
     { id: "tier_free", name: "Free", description: "Public starter content", color: colors.primary2 },
@@ -85,15 +74,16 @@ export function SmartLibraryApp(props: SmartLibraryProps) {
   const [selectedDrip, setSelectedDrip] = useState(dripPresets[0] as string);
   const [activeAction, setActiveAction] = useState<TransformAction>("Structure Course");
   const [stage, setStage] = useState<ProcessingStage>("idle");
-  const [stageText, setStageText] = useState("Choose upload settings, create tiers, then generate a course structure.");
+  const [stageText, setStageText] = useState("Platform ready. Choose a workspace section to begin.");
   const [output, setOutput] = useState(firstRunOutput());
   const [sources, setSources] = useState<RetrievedSource[]>([]);
 
   const apiOrigin = host.apiOrigin || API_FALLBACK;
   const totalWords = library.reduce((sum, item) => sum + item.wordCount, 0);
+  const isBusy = stage === "retrieving" || stage === "thinking";
 
   useEffect(() => {
-    setNavigationBar("SmartLibrary Content Engine", "Courses, tiers, drip, AI structure");
+    setNavigationBar("SmartLibrary Content Engine", "Premium AI learning platform");
     const cached = cacheGet(cacheKey);
     if (cached) {
       try {
@@ -101,7 +91,7 @@ export function SmartLibraryApp(props: SmartLibraryProps) {
         if (Array.isArray(parsed.library)) setLibrary(parsed.library);
         if (Array.isArray(parsed.tiers)) setTiers(parsed.tiers);
       } catch {
-        setStageText("Workspace ready. Choose upload settings to begin.");
+        setStageText("Workspace ready.");
       }
     }
   }, [cacheKey]);
@@ -129,7 +119,7 @@ export function SmartLibraryApp(props: SmartLibraryProps) {
 
   async function createCourseAsset() {
     const assignedTiers = tiers.filter((tier) => selectedTierIds.includes(tier.id)).map((tier) => tier.name).join(", ") || "Ungated";
-    const assetTitle = `${selectedType.charAt(0).toUpperCase()}${selectedType.slice(1)} Upload Blueprint`;
+    const assetTitle = `${selectedType.charAt(0).toUpperCase()}${selectedType.slice(1)} Course Asset`;
     const content = `Upload Type: ${selectedType}. Assigned Tiers: ${assignedTiers}. Drip Rule: ${selectedDrip}. ${starterCourseAsset}`;
 
     const item: LibraryItem = {
@@ -150,6 +140,7 @@ export function SmartLibraryApp(props: SmartLibraryProps) {
 
     const nextLibrary = [item, ...library].slice(0, 60);
     setLibrary(nextLibrary);
+    setActiveTab("creator");
     await transform("Structure Course", buildSuggestedPrompt(item), nextLibrary);
   }
 
@@ -170,7 +161,7 @@ export function SmartLibraryApp(props: SmartLibraryProps) {
     }
 
     setStage("thinking");
-    setStageText("Generating course structure with AI routing...");
+    setStageText("Generating premium learning structure with AI routing...");
 
     try {
       const response = await fetch(`${apiOrigin}/api/transform`, {
@@ -187,7 +178,7 @@ export function SmartLibraryApp(props: SmartLibraryProps) {
       if (response.ok) {
         const data = (await response.json()) as { output?: string; provider?: string };
         if (data.output && data.output.trim()) setOutput(data.output.trim());
-        setStageText(`Output ready${data.provider ? ` via ${data.provider}` : ""}. Copy, share, refine, or choose another action.`);
+        setStageText(`Output ready${data.provider ? ` via ${data.provider}` : ""}.`);
       } else {
         setStageText("Output ready using local course structuring fallback.");
       }
@@ -206,218 +197,324 @@ export function SmartLibraryApp(props: SmartLibraryProps) {
     setStageText("Workspace cleared. Create a new upload blueprint.");
   }
 
-  const isBusy = stage === "retrieving" || stage === "thinking";
-
   return (
     <Shell>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        <Header title="SmartLibrary" subtitle="Course upload, tier gating, drip and AI structure" badge={props.mode === "dashboard" ? "Admin" : "Native"} />
+        <Header title="SmartLibrary" subtitle="AI course hosting and intelligent learning engine" badge={props.mode === "dashboard" ? "Admin" : "Native"} />
 
-        <Card style={styles.hero}>
-          <View style={styles.heroTop}>
-            <Pill label="Crash-safe creator console" tone="success" />
-            <Text style={styles.heroStat}>{library.length} assets</Text>
-          </View>
-          <Text style={styles.heroTitle}>Build premium gated courses from uploaded assets</Text>
-          <Text style={styles.heroText}>
-            Choose asset type, assign custom tiers, set drip logic, then generate modules, lessons, assignments, quizzes, and gamified checkpoints.
-          </Text>
-          <View style={styles.statRow}>
-            <MiniStat label="Words" value={formatNumber(totalWords)} />
-            <MiniStat label="Tiers" value={String(tiers.length)} />
-            <MiniStat label="Mode" value={props.mode} />
-          </View>
-        </Card>
-
-        <GamificationPanel libraryCount={library.length} tierCount={tiers.length} />
-
-        <PremiumPlatformOverview />
-        <RolePermissionMatrix />
-
-        <SectionTitle title="1. Upload asset type" action="No typing needed" />
-        <Card>
-          <Text style={styles.label}>Choose the asset the creator is uploading</Text>
-          <View style={styles.typeRow}>
-            {uploadPresets.map((type) => (
-              <Pressable key={type} onPress={() => setSelectedType(type)} style={[styles.typeChip, selectedType === type && styles.typeChipActive]}>
-                <Text style={[styles.typeChipText, selectedType === type && styles.typeChipTextActive]}>{type}</Text>
-              </Pressable>
-            ))}
-          </View>
-          <Text style={styles.helperText}>
-            Stable mode avoids native text-input crashes. The next backend upgrade should connect this to Whop/Vercel Blob/Supabase/S3 file upload.
-          </Text>
-        </Card>
-
-        <SectionTitle title="2. Unlimited tiers" action="Creator-defined" />
-        <Card>
-          <Text style={styles.label}>Selected tiers gate who can access this upload</Text>
-          <View style={styles.typeRow}>
-            {tiers.map((tier) => (
-              <Pressable key={tier.id} onPress={() => toggleTier(tier.id)} style={[styles.typeChip, selectedTierIds.includes(tier.id) && styles.typeChipActive]}>
-                <Text style={[styles.typeChipText, selectedTierIds.includes(tier.id) && styles.typeChipTextActive]}>{tier.name}</Text>
-              </Pressable>
-            ))}
-          </View>
-          <Text style={styles.label}>Add common tier names</Text>
-          <View style={styles.typeRow}>
-            {tierPresets.map((tier) => (
-              <Pressable key={tier} onPress={() => addTier(tier)} style={styles.smallChip}>
-                <Text style={styles.smallChipText}>+ {tier}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </Card>
-
-        <SectionTitle title="3. Drip logic" action="Time or condition" />
-        <Card>
-          <View style={styles.sourceList}>
-            {dripPresets.map((drip) => (
-              <Pressable key={drip} onPress={() => setSelectedDrip(drip)} style={[styles.dripCard, selectedDrip === drip && styles.dripCardActive]}>
-                <Text style={[styles.dripText, selectedDrip === drip && styles.dripTextActive]}>{drip}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </Card>
-
+        <Hero libraryCount={library.length} tierCount={tiers.length} totalWords={totalWords} mode={props.mode} />
+        <TabBar activeTab={activeTab} setActiveTab={setActiveTab} />
         <StatusCard stage={stage} text={stageText} busy={isBusy} />
 
-        <SectionTitle title="4. Generate course intelligence" action="RAG first" />
-        <Card>
-          <PrimaryButton onPress={createCourseAsset} disabled={isBusy}>
-            {isBusy ? "Structuring..." : "Create Upload Blueprint"}
-          </PrimaryButton>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.actionRow}>
-            {transformActions.slice(0, 12).map((action, index) => (
-              <Pressable key={`${action}-${index}`} onPress={() => transform(action)} style={[styles.actionChip, activeAction === action && styles.actionChipActive]}>
-                <Text style={[styles.actionText, activeAction === action && styles.actionTextActive]}>{action}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-        </Card>
-
-        <SectionTitle title="Finished output" action="Selectable" />
-        <Card style={styles.outputCard}>
-          {isBusy ? <ActivityIndicator color={colors.primary2} style={{ marginBottom: spacing.md }} /> : null}
-          <Text selectable style={styles.outputText}>{output}</Text>
-        </Card>
-
-        <SectionTitle title="Upload assets" action={`${library.length} saved`} />
-        <View style={styles.sourceList}>
-          {library.length ? library.map((item) => <LibraryCard key={item.id} item={item} tiers={tiers} />) : <OnboardingCard />}
-        </View>
-
-        <SectionTitle title="Retrieved sources" action={`${sources.length} used`} />
-        <View style={styles.sourceList}>
-          {sources.length ? sources.map((source) => <RetrievedCard key={`${source.id}-${source.excerpt.slice(0, 10)}`} source={source} />) : <EmptySourceCard />}
-        </View>
-
-        <LearningDashboards />
-        <AutomationAndSearch />
-        <PrimaryButton style={styles.resetButton} onPress={clearWorkspace}>Clear Test Workspace</PrimaryButton>
+        {activeTab === "learner" ? (
+          <LearnerDashboard library={library} tiers={tiers} setActiveTab={setActiveTab} />
+        ) : activeTab === "creator" ? (
+          <CreatorStudio
+            library={library}
+            tiers={tiers}
+            selectedTierIds={selectedTierIds}
+            selectedType={selectedType}
+            selectedDrip={selectedDrip}
+            activeAction={activeAction}
+            sources={sources}
+            output={output}
+            isBusy={isBusy}
+            setSelectedType={setSelectedType}
+            setSelectedDrip={setSelectedDrip}
+            toggleTier={toggleTier}
+            addTier={addTier}
+            createCourseAsset={createCourseAsset}
+            transform={transform}
+          />
+        ) : activeTab === "admin" ? (
+          <AdminDashboard tiers={tiers} library={library} />
+        ) : activeTab === "ai" ? (
+          <AITutorWorkspace output={output} sources={sources} isBusy={isBusy} transform={transform} />
+        ) : (
+          <AutomationCenter clearWorkspace={clearWorkspace} />
+        )}
       </ScrollView>
     </Shell>
   );
 }
 
-
-function PremiumPlatformOverview() {
+function Hero({ libraryCount, tierCount, totalWords, mode }: { libraryCount: number; tierCount: number; totalWords: number; mode: string }) {
   return (
-    <>
-      <SectionTitle title="SaaS platform engine" action="Production blueprint" />
-      <Card style={styles.platformCard}>
-        <Text style={styles.platformTitle}>AI-powered course hosting and intelligent learning engine</Text>
-        <Text style={styles.sourceExcerpt}>
-          SmartLibrary is being upgraded into a premium SaaS learning platform with course hosting, smart drip, learning paths, audio-to-course generation, AI tutors, certificates, communities, analytics, and webhooks.
-        </Text>
-        <View style={styles.featureGrid}>
-          {platformCapabilities.slice(0, 10).map((capability) => (
-            <View key={capability} style={styles.featureItem}>
-              <Text style={styles.featureBullet}>•</Text>
-              <Text style={styles.featureText}>{capability}</Text>
-            </View>
-          ))}
-        </View>
-      </Card>
-    </>
-  );
-}
-
-function RolePermissionMatrix() {
-  return (
-    <>
-      <SectionTitle title="Role permissions" action="RBAC-ready" />
-      <View style={styles.sourceList}>
-        {roleCards.map((item) => (
-          <Card key={item.role} style={styles.roleCard}>
-            <Text style={styles.sourceTitle}>{item.role}</Text>
-            <Text style={styles.sourceExcerpt}>{item.access}</Text>
-          </Card>
-        ))}
+    <Card style={styles.hero}>
+      <View style={styles.heroTop}>
+        <Pill label="Premium SaaS MVP" tone="success" />
+        <Text style={styles.heroStat}>{libraryCount} assets</Text>
       </View>
-    </>
+      <Text style={styles.heroTitle}>Host courses, automate learning, and power every lesson with AI</Text>
+      <Text style={styles.heroText}>
+        A structured learning platform for creators: course builder, smart drip, AI tutor, quizzes, assignments, certificates, community, analytics, and tier-gated access.
+      </Text>
+      <View style={styles.statRow}>
+        <MiniStat label="Words" value={formatNumber(totalWords)} />
+        <MiniStat label="Tiers" value={String(tierCount)} />
+        <MiniStat label="Mode" value={mode} />
+      </View>
+    </Card>
   );
 }
 
-function LearningDashboards() {
+function TabBar({ activeTab, setActiveTab }: { activeTab: WorkspaceTab; setActiveTab: (tab: WorkspaceTab) => void }) {
+  const tabs: Array<{ id: WorkspaceTab; label: string }> = [
+    { id: "learner", label: "Learner" },
+    { id: "creator", label: "Creator" },
+    { id: "admin", label: "Admin" },
+    { id: "ai", label: "AI Tutor" },
+    { id: "automation", label: "Automation" },
+  ];
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabRow}>
+      {tabs.map((tab) => (
+        <Pressable key={tab.id} onPress={() => setActiveTab(tab.id)} style={[styles.tab, activeTab === tab.id && styles.tabActive]}>
+          <Text style={[styles.tabText, activeTab === tab.id && styles.tabTextActive]}>{tab.label}</Text>
+        </Pressable>
+      ))}
+    </ScrollView>
+  );
+}
+
+function LearnerDashboard({ library, tiers, setActiveTab }: { library: LibraryItem[]; tiers: ContentTier[]; setActiveTab: (tab: WorkspaceTab) => void }) {
   return (
     <>
-      <SectionTitle title="Dashboards and analytics" action="Premium UI" />
+      <SectionTitle title="Learner dashboard" action="Student view" />
       <Card style={styles.platformCard}>
         <View style={styles.statRow}>
-          <MiniStat label="Completion" value="82%" />
-          <MiniStat label="Engagement" value="High" />
-          <MiniStat label="Quiz Avg" value="76%" />
+          <MiniStat label="Progress" value="42%" />
+          <MiniStat label="Streak" value="5d" />
+          <MiniStat label="XP" value={String(1250 + library.length * 75)} />
         </View>
-        <Text style={styles.platformTitle}>Student dashboard</Text>
-        <Text style={styles.sourceExcerpt}>Enrolled courses, progress tracking, completed lessons, certificates, learning streak, recommended next lesson, and recent activity.</Text>
-        <Text style={styles.platformTitle}>Instructor dashboard</Text>
-        <Text style={styles.sourceExcerpt}>Student progress, quiz results, assignment submissions, course analytics, course editing, drip schedules, and announcements.</Text>
-        <Text style={styles.platformTitle}>Admin dashboard</Text>
-        <Text style={styles.sourceExcerpt}>User management, course approvals, analytics overview, content moderation, audit logs, and platform operations.</Text>
+        <ProgressBar value={42} />
+        <DashboardBlock title="Recommended next lesson" body="Continue Module 2: Core Teaching. Complete the practice exercise to unlock the quiz and next content drip." />
+        <DashboardBlock title="Enrolled courses" body={`${Math.max(1, library.length)} active learning path${library.length === 1 ? "" : "s"}. Premium tier access: ${tiers.map((tier) => tier.name).slice(0, 4).join(", ")}.`} />
+        <DashboardBlock title="Certificates" body="Certificates unlock automatically after required lessons, quizzes, and assignments are completed." />
+        <PrimaryButton onPress={() => setActiveTab("ai")}>Ask AI Tutor</PrimaryButton>
       </Card>
+
+      <SectionTitle title="Learning path" action="Sequenced journey" />
+      <View style={styles.sourceList}>
+        <PathStep number="1" title="Foundation Course" body="Unlocked. Complete orientation and baseline quiz." complete />
+        <PathStep number="2" title="Core Training" body="Unlocks after Foundation completion." complete={false} />
+        <PathStep number="3" title="Implementation Lab" body="Unlocks after quiz score of 70% or higher." complete={false} />
+        <PathStep number="4" title="Certification" body="Unlocks after final assignment approval." complete={false} />
+      </View>
     </>
   );
 }
 
-function AutomationAndSearch() {
+function CreatorStudio({
+  library,
+  tiers,
+  selectedTierIds,
+  selectedType,
+  selectedDrip,
+  activeAction,
+  sources,
+  output,
+  isBusy,
+  setSelectedType,
+  setSelectedDrip,
+  toggleTier,
+  addTier,
+  createCourseAsset,
+  transform,
+}: {
+  library: LibraryItem[];
+  tiers: ContentTier[];
+  selectedTierIds: string[];
+  selectedType: LibraryItem["type"];
+  selectedDrip: string;
+  activeAction: TransformAction;
+  sources: RetrievedSource[];
+  output: string;
+  isBusy: boolean;
+  setSelectedType: (type: LibraryItem["type"]) => void;
+  setSelectedDrip: (drip: string) => void;
+  toggleTier: (id: string) => void;
+  addTier: (name: string) => void;
+  createCourseAsset: () => void;
+  transform: (action?: TransformAction, question?: string, currentLibrary?: LibraryItem[]) => Promise<void>;
+}) {
   return (
     <>
-      <SectionTitle title="Automation, tutor and search" action="Webhook-ready" />
-      <Card style={styles.platformCard}>
-        <Text style={styles.platformTitle}>AI tutor in every lesson</Text>
-        <Text style={styles.sourceExcerpt}>Ask AI, suggested questions, lesson explanations, summaries, quiz generation, next lesson recommendations, and answers grounded in transcripts, resources, and instructor notes.</Text>
-        <Text style={styles.platformTitle}>Global search</Text>
-        <Text style={styles.sourceExcerpt}>Search courses, lessons, transcripts, resources, categories, difficulty levels, instructors, and completion status.</Text>
-        <Text style={styles.platformTitle}>Webhook events</Text>
+      <SectionTitle title="Creator studio" action="Course builder" />
+      <Card style={styles.studioCard}>
+        <StepHeader number="1" title="Select upload asset" body="Choose the course file type. Native file storage comes next; this crash-safe build keeps selection stable." />
         <View style={styles.typeRow}>
-          {automationEvents.map((event) => (
-            <View key={event} style={styles.smallChip}>
-              <Text style={styles.smallChipText}>{event}</Text>
-            </View>
+          {uploadPresets.map((type) => (
+            <Pressable key={type} onPress={() => setSelectedType(type)} style={[styles.typeChip, selectedType === type && styles.typeChipActive]}>
+              <Text style={[styles.typeChipText, selectedType === type && styles.typeChipTextActive]}>{type}</Text>
+            </Pressable>
           ))}
         </View>
+
+        <StepHeader number="2" title="Gate by unlimited tiers" body="Create and assign creator-named tier categories." />
+        <View style={styles.typeRow}>
+          {tiers.map((tier) => (
+            <Pressable key={tier.id} onPress={() => toggleTier(tier.id)} style={[styles.typeChip, selectedTierIds.includes(tier.id) && styles.typeChipActive]}>
+              <Text style={[styles.typeChipText, selectedTierIds.includes(tier.id) && styles.typeChipTextActive]}>{tier.name}</Text>
+            </Pressable>
+          ))}
+        </View>
+        <View style={styles.typeRow}>
+          {tierPresets.map((tier) => (
+            <Pressable key={tier} onPress={() => addTier(tier)} style={styles.smallChip}>
+              <Text style={styles.smallChipText}>+ {tier}</Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <StepHeader number="3" title="Apply smart drip" body="Use time-based or conditional unlock logic." />
+        <View style={styles.sourceList}>
+          {dripPresets.map((drip) => (
+            <Pressable key={drip} onPress={() => setSelectedDrip(drip)} style={[styles.dripCard, selectedDrip === drip && styles.dripCardActive]}>
+              <Text style={[styles.dripText, selectedDrip === drip && styles.dripTextActive]}>{drip}</Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <PrimaryButton onPress={createCourseAsset} disabled={isBusy}>{isBusy ? "Structuring..." : "Create Upload Blueprint"}</PrimaryButton>
       </Card>
+
+      <SectionTitle title="AI course actions" action="Finished outputs" />
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.actionRow}>
+        {transformActions.slice(0, 12).map((action, index) => (
+          <Pressable key={`${action}-${index}`} onPress={() => transform(action)} style={[styles.actionChip, activeAction === action && styles.actionChipActive]}>
+            <Text style={[styles.actionText, activeAction === action && styles.actionTextActive]}>{action}</Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+
+      <SectionTitle title="Generated course blueprint" action="Selectable" />
+      <Card style={styles.outputCard}>
+        {isBusy ? <ActivityIndicator color={colors.primary2} style={{ marginBottom: spacing.md }} /> : null}
+        <Text selectable style={styles.outputText}>{output}</Text>
+      </Card>
+
+      <SectionTitle title="Upload assets" action={`${library.length} saved`} />
+      <View style={styles.sourceList}>{library.length ? library.map((item) => <LibraryCard key={item.id} item={item} tiers={tiers} />) : <OnboardingCard />}</View>
+
+      <SectionTitle title="Retrieved sources" action={`${sources.length} used`} />
+      <View style={styles.sourceList}>{sources.length ? sources.map((source) => <RetrievedCard key={`${source.id}-${source.excerpt.slice(0, 10)}`} source={source} />) : <EmptySourceCard />}</View>
     </>
   );
 }
 
-function GamificationPanel({ libraryCount, tierCount }: { libraryCount: number; tierCount: number }) {
-  const xp = libraryCount * 75 + tierCount * 25;
+function AdminDashboard({ tiers, library }: { tiers: ContentTier[]; library: LibraryItem[] }) {
   return (
-    <Card style={styles.gameCard}>
-      <View style={styles.heroTop}>
-        <Pill label="Gamified learning" tone="success" />
-        <Text style={styles.heroStat}>{xp} XP ready</Text>
-      </View>
-      <Text style={styles.gameTitle}>Interactive lessons, badges, checkpoints, and unlocks</Text>
-      <View style={styles.statRow}>
-        <MiniStat label="Badges" value={libraryCount ? "3" : "0"} />
-        <MiniStat label="Streak" value="0d" />
-        <MiniStat label="Unlocks" value={String(tierCount)} />
-      </View>
-      <Text style={styles.sourceExcerpt}>Each structured lesson can include XP rewards, quizzes, assignments, completion gates, badges, and conditional unlock rules.</Text>
+    <>
+      <SectionTitle title="Admin dashboard" action="Operations" />
+      <Card style={styles.platformCard}>
+        <View style={styles.statRow}>
+          <MiniStat label="Users" value="10K+" />
+          <MiniStat label="Courses" value={String(Math.max(1, library.length))} />
+          <MiniStat label="Tiers" value={String(tiers.length)} />
+        </View>
+        <DashboardBlock title="User management" body="Owners and admins manage users, roles, instructors, moderators, students, and tier access." />
+        <DashboardBlock title="Course approvals" body="Review draft courses, approve published courses, audit lesson changes, and enforce content quality." />
+        <DashboardBlock title="Moderation" body="Moderate discussions, pin instructor posts, flag comments, delete abuse, and ban users when required." />
+        <DashboardBlock title="Analytics overview" body="Track completion rates, lesson drop-off, engagement, quiz difficulty, assignment approval time, and certificate issuance." />
+      </Card>
+
+      <SectionTitle title="Role permissions" action="RBAC" />
+      <View style={styles.sourceList}>{roleCards.map((item) => <RoleCard key={item.role} role={item.role} access={item.access} />)}</View>
+    </>
+  );
+}
+
+function AITutorWorkspace({ output, sources, isBusy, transform }: { output: string; sources: RetrievedSource[]; isBusy: boolean; transform: (action?: TransformAction, question?: string, currentLibrary?: LibraryItem[]) => Promise<void> }) {
+  const suggestions: Array<{ label: string; action: TransformAction; prompt: string }> = [
+    { label: "Explain lesson", action: "Explain Simply", prompt: "Explain the current lesson concept simply and give examples." },
+    { label: "Generate quiz", action: "Generate Quiz", prompt: "Generate a quiz for this lesson with answers and unlock criteria." },
+    { label: "Recommend next", action: "Generate Action Plan", prompt: "Recommend the learner's next lesson and action steps." },
+    { label: "Create assignment", action: "Create Assignments", prompt: "Create an assignment that proves the learner can apply the lesson." },
+  ];
+  return (
+    <>
+      <SectionTitle title="AI tutor" action="Every lesson" />
+      <Card style={styles.platformCard}>
+        <Text style={styles.platformTitle}>Tutor capabilities</Text>
+        <Text style={styles.sourceExcerpt}>Answer student questions, explain concepts, summarize lessons, generate quizzes, recommend the next lesson, and ground responses in transcripts, course materials, and instructor notes.</Text>
+        <View style={styles.typeRow}>{suggestions.map((item) => <Pressable key={item.label} onPress={() => transform(item.action, item.prompt)} style={styles.smallChip}><Text style={styles.smallChipText}>{item.label}</Text></Pressable>)}</View>
+      </Card>
+
+      <SectionTitle title="Tutor output" action="Copy-ready" />
+      <Card style={styles.outputCard}>{isBusy ? <ActivityIndicator color={colors.primary2} style={{ marginBottom: spacing.md }} /> : null}<Text selectable style={styles.outputText}>{output}</Text></Card>
+
+      <SectionTitle title="Tutor sources" action={`${sources.length} references`} />
+      <View style={styles.sourceList}>{sources.length ? sources.map((source) => <RetrievedCard key={`${source.id}-${source.excerpt.slice(0, 10)}`} source={source} />) : <EmptySourceCard />}</View>
+    </>
+  );
+}
+
+function AutomationCenter({ clearWorkspace }: { clearWorkspace: () => void }) {
+  return (
+    <>
+      <SectionTitle title="Automation center" action="Webhooks" />
+      <Card style={styles.platformCard}>
+        <Text style={styles.platformTitle}>Learning automation events</Text>
+        <View style={styles.typeRow}>{automationEvents.map((event) => <View key={event} style={styles.smallChip}><Text style={styles.smallChipText}>{event}</Text></View>)}</View>
+        <DashboardBlock title="Audio-to-course engine" body="audio_uploaded triggers transcription, transcript processing, course outline generation, module creation, lesson summaries, quizzes, and instructor review." />
+        <DashboardBlock title="Progression automation" body="lesson_completed, quiz_passed, and assignment_submitted trigger XP, badges, unlock rules, certificates, analytics, and webhook delivery." />
+        <DashboardBlock title="Global search" body="Search across courses, lessons, transcripts, resources, categories, difficulty levels, instructors, and completion status." />
+      </Card>
+
+      <SectionTitle title="Certificates and community" action="Engagement" />
+      <Card style={styles.platformCard}>
+        <DashboardBlock title="Certificates" body="Generate downloadable certificates with student name, course title, instructor name, completion date, and verification code." />
+        <DashboardBlock title="Community" body="Course discussion threads, comments, likes, pinned instructor posts, moderation, flagged content, and role-based controls." />
+        <DashboardBlock title="Realtime-ready" body="The backend blueprint includes WebSocket-ready realtime chat, tutor events, and community activity streams." />
+      </Card>
+      <PrimaryButton style={styles.resetButton} onPress={clearWorkspace}>Clear Test Workspace</PrimaryButton>
+    </>
+  );
+}
+
+function StepHeader({ number, title, body }: { number: string; title: string; body: string }) {
+  return (
+    <View style={styles.stepHeader}>
+      <View style={styles.stepNumber}><Text style={styles.stepNumberText}>{number}</Text></View>
+      <View style={{ flex: 1 }}><Text style={styles.stepTitle}>{title}</Text><Text style={styles.stepBody}>{body}</Text></View>
+    </View>
+  );
+}
+
+function DashboardBlock({ title, body }: { title: string; body: string }) {
+  return (
+    <View style={styles.block}>
+      <Text style={styles.blockTitle}>{title}</Text>
+      <Text style={styles.blockBody}>{body}</Text>
+    </View>
+  );
+}
+
+function RoleCard({ role, access }: { role: string; access: string }) {
+  return (
+    <Card style={styles.roleCard}>
+      <Text style={styles.sourceTitle}>{role}</Text>
+      <Text style={styles.sourceExcerpt}>{access}</Text>
     </Card>
+  );
+}
+
+function PathStep({ number, title, body, complete }: { number: string; title: string; body: string; complete: boolean }) {
+  return (
+    <Card style={[styles.pathStep, complete && styles.pathStepComplete]}>
+      <View style={styles.libraryTop}>
+        <View style={[styles.stepNumber, complete && styles.stepNumberComplete]}><Text style={styles.stepNumberText}>{number}</Text></View>
+        <View style={{ flex: 1 }}><Text style={styles.sourceTitle}>{title}</Text><Text style={styles.sourceExcerpt}>{body}</Text></View>
+        <Pill label={complete ? "Done" : "Locked"} tone={complete ? "success" : "warning"} />
+      </View>
+    </Card>
+  );
+}
+
+function ProgressBar({ value }: { value: number }) {
+  return (
+    <View style={styles.progressOuter}><View style={[styles.progressInner, { width: `${Math.max(0, Math.min(100, value))}%` }]} /></View>
   );
 }
 
@@ -469,24 +566,18 @@ function LibraryCard({ item, tiers }: { item: LibraryItem; tiers: ContentTier[] 
 
 function EmptySourceCard() {
   return (
-    <Card>
-      <Text style={styles.sourceTitle}>No retrieved source yet</Text>
-      <Text style={styles.sourceExcerpt}>SmartLibrary will search the course upload library before generating every course structure.</Text>
-    </Card>
+    <Card><Text style={styles.sourceTitle}>No retrieved source yet</Text><Text style={styles.sourceExcerpt}>SmartLibrary will search course assets before generating structured learning outputs.</Text></Card>
   );
 }
 
 function OnboardingCard() {
   return (
-    <Card>
-      <Text style={styles.sourceTitle}>Create a course upload blueprint</Text>
-      <Text style={styles.sourceExcerpt}>Choose upload type, tiers, and drip logic. Then generate course modules, lessons, exercises, assignments, quizzes, and gamified checkpoints.</Text>
-    </Card>
+    <Card><Text style={styles.sourceTitle}>Create a course upload blueprint</Text><Text style={styles.sourceExcerpt}>Choose upload type, tiers, and drip logic. Then generate course modules, lessons, exercises, assignments, quizzes, and gamified checkpoints.</Text></Card>
   );
 }
 
 function firstRunOutput() {
-  return `Summary:\nSmartLibrary is ready for course creators. Instead of pasting raw text, creators can define uploaded course assets, gate them by custom tiers, apply drip rules, and generate structured learning experiences.\n\nKey Points:\n1. Create unlimited creator-defined tiers such as Free, Premium, VIP, Gold, Cohort, or Inner Circle.\n2. Assign uploaded course assets to tier categories.\n3. Add time-based or conditional drip logic.\n4. Generate modules, lessons, exercises, assignments, quizzes, and interactive checkpoints.\n\nInsights:\nThe product should help creators turn files and videos into guided learning journeys, not static libraries. The highest-value workflow is upload, structure, gate, drip, gamify, and improve completion.\n\nActionable Output:\nStart by selecting an upload asset type, choosing tiers, setting a drip rule, then tapping Create Upload Blueprint.`;
+  return `Summary:\nSmartLibrary is now organized as a premium AI learning platform with separate learner, creator, admin, AI tutor, and automation workspaces.\n\nKey Points:\n1. Learners get progress, streaks, recommended lessons, learning paths, certificates, and AI tutor access.\n2. Creators get course asset upload blueprints, tier gating, drip logic, course structuring, quizzes, assignments, and interactive lessons.\n3. Admins get role management, course approvals, moderation, analytics, audit logs, and platform operations.\n4. Automation supports audio-to-course, transcript processing, lesson completion, quiz pass, assignment submission, and certificate events.\n\nInsights:\nThe app now feels more like a complete SaaS learning system instead of a collection of disconnected tools.\n\nActionable Output:\nOpen Creator Studio to create a course upload blueprint, or open Learner Dashboard to view the student experience.`;
 }
 
 function formatNumber(value: number) {
@@ -496,264 +587,66 @@ function formatNumber(value: number) {
 }
 
 const styles = StyleSheet.create({
-  scroll: {
-    paddingBottom: spacing.xxl * 2,
-  },
-  hero: {
-    marginBottom: spacing.sm,
-  },
-  heroTop: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.sm,
-  },
-  heroStat: {
-    color: colors.primary2,
-    fontSize: 12,
-    fontWeight: "900",
-  },
-  heroTitle: {
-    color: colors.text,
-    fontSize: 27,
-    lineHeight: 33,
-    fontWeight: "900",
-    letterSpacing: -0.8,
-    marginTop: spacing.md,
-  },
-  heroText: {
-    color: colors.muted,
-    fontSize: 14,
-    lineHeight: 21,
-    marginTop: spacing.sm,
-  },
-  statRow: {
-    flexDirection: "row",
-    gap: spacing.sm,
-    marginTop: spacing.lg,
-  },
-  miniStat: {
-    flex: 1,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface2,
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-    padding: spacing.md,
-  },
-  miniValue: {
-    color: colors.text,
-    fontWeight: "900",
-    fontSize: 16,
-  },
-  miniLabel: {
-    color: colors.faint,
-    fontWeight: "800",
-    fontSize: 10,
-    marginTop: 4,
-    textTransform: "uppercase",
-  },
-  platformCard: {
-    backgroundColor: "#0B1224",
-  },
-  platformTitle: {
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: "900",
-    marginTop: spacing.sm,
-  },
-  featureGrid: {
-    marginTop: spacing.md,
-    gap: spacing.sm,
-  },
-  featureItem: {
-    flexDirection: "row",
-    gap: spacing.sm,
-    alignItems: "flex-start",
-  },
-  featureBullet: {
-    color: colors.primary2,
-    fontSize: 16,
-    fontWeight: "900",
-  },
-  featureText: {
-    color: colors.muted,
-    fontSize: 12,
-    lineHeight: 18,
-    flex: 1,
-  },
-  roleCard: {
-    padding: spacing.md,
-    backgroundColor: colors.surface,
-  },
-  gameCard: {
-    marginTop: spacing.md,
-    backgroundColor: "#0D1629",
-  },
-  gameTitle: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: "900",
-    marginTop: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  label: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: "800",
-    marginBottom: spacing.sm,
-    textTransform: "uppercase",
-    letterSpacing: 0.7,
-  },
-  helperText: {
-    color: colors.faint,
-    fontSize: 12,
-    lineHeight: 18,
-    marginTop: spacing.sm,
-  },
-  typeRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  typeChip: {
-    borderRadius: 999,
-    backgroundColor: colors.surface2,
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  typeChipActive: {
-    backgroundColor: "rgba(0, 212, 255, 0.13)",
-    borderColor: "rgba(0, 212, 255, 0.45)",
-  },
-  typeChipText: {
-    color: colors.muted,
-    fontWeight: "800",
-    fontSize: 11,
-    textTransform: "capitalize",
-  },
-  typeChipTextActive: {
-    color: colors.primary2,
-  },
-  smallChip: {
-    borderRadius: 999,
-    backgroundColor: "rgba(109, 94, 248, 0.12)",
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-  },
-  smallChipText: {
-    color: colors.primary2,
-    fontSize: 11,
-    fontWeight: "900",
-  },
-  dripCard: {
-    backgroundColor: colors.surface2,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-    padding: spacing.md,
-  },
-  dripCardActive: {
-    borderColor: colors.primary2,
-    backgroundColor: "rgba(0, 212, 255, 0.1)",
-  },
-  dripText: {
-    color: colors.muted,
-    fontSize: 13,
-    fontWeight: "800",
-  },
-  dripTextActive: {
-    color: colors.text,
-  },
-  statusCard: {
-    marginTop: spacing.md,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    paddingVertical: spacing.md,
-  },
-  statusDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 10,
-  },
-  statusText: {
-    color: colors.muted,
-    flex: 1,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  actionRow: {
-    gap: spacing.sm,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-  },
-  actionChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: 11,
-    borderRadius: 999,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-  },
-  actionChipActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  actionText: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: "900",
-  },
-  actionTextActive: {
-    color: colors.white,
-  },
-  outputCard: {
-    backgroundColor: "#0B1020",
-  },
-  outputText: {
-    color: colors.text,
-    fontSize: 14,
-    lineHeight: 22,
-  },
-  sourceList: {
-    gap: spacing.md,
-  },
-  retrievedCard: {
-    padding: spacing.md,
-  },
-  sourceTitle: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: "900",
-  },
-  sourceMeta: {
-    color: colors.primary2,
-    fontSize: 11,
-    fontWeight: "800",
-    marginTop: 4,
-    textTransform: "capitalize",
-  },
-  sourceExcerpt: {
-    color: colors.muted,
-    fontSize: 12,
-    lineHeight: 18,
-    marginTop: spacing.sm,
-  },
-  libraryCard: {
-    padding: spacing.md,
-  },
-  libraryTop: {
-    flexDirection: "row",
-    gap: spacing.md,
-    alignItems: "flex-start",
-  },
-  resetButton: {
-    marginTop: spacing.xl,
-    backgroundColor: colors.surface3,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
+  scroll: { paddingBottom: spacing.xxl * 2 },
+  hero: { marginBottom: spacing.sm, backgroundColor: "#0B1224" },
+  heroTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },
+  heroStat: { color: colors.primary2, fontSize: 12, fontWeight: "900" },
+  heroTitle: { color: colors.text, fontSize: 26, lineHeight: 32, fontWeight: "900", letterSpacing: -0.8, marginTop: spacing.md },
+  heroText: { color: colors.muted, fontSize: 14, lineHeight: 21, marginTop: spacing.sm },
+  tabRow: { gap: spacing.sm, paddingVertical: spacing.md },
+  tab: { borderRadius: 999, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.borderSoft, paddingHorizontal: 14, paddingVertical: 10 },
+  tabActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  tabText: { color: colors.muted, fontSize: 12, fontWeight: "900" },
+  tabTextActive: { color: colors.white },
+  statRow: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.lg },
+  miniStat: { flex: 1, borderRadius: radius.md, backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.borderSoft, padding: spacing.md },
+  miniValue: { color: colors.text, fontWeight: "900", fontSize: 16 },
+  miniLabel: { color: colors.faint, fontWeight: "800", fontSize: 10, marginTop: 4, textTransform: "uppercase" },
+  platformCard: { backgroundColor: "#0B1224" },
+  platformTitle: { color: colors.text, fontSize: 15, fontWeight: "900", marginTop: spacing.sm },
+  studioCard: { backgroundColor: "#0C1428" },
+  label: { color: colors.muted, fontSize: 12, fontWeight: "800", marginBottom: spacing.sm, textTransform: "uppercase", letterSpacing: 0.7 },
+  typeRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginBottom: spacing.md },
+  typeChip: { borderRadius: 999, backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.borderSoft, paddingHorizontal: 12, paddingVertical: 8 },
+  typeChipActive: { backgroundColor: "rgba(0, 212, 255, 0.13)", borderColor: "rgba(0, 212, 255, 0.45)" },
+  typeChipText: { color: colors.muted, fontWeight: "800", fontSize: 11, textTransform: "capitalize" },
+  typeChipTextActive: { color: colors.primary2 },
+  smallChip: { borderRadius: 999, backgroundColor: "rgba(109, 94, 248, 0.12)", paddingHorizontal: 10, paddingVertical: 7 },
+  smallChipText: { color: colors.primary2, fontSize: 11, fontWeight: "900" },
+  dripCard: { backgroundColor: colors.surface2, borderRadius: radius.md, borderWidth: 1, borderColor: colors.borderSoft, padding: spacing.md },
+  dripCardActive: { borderColor: colors.primary2, backgroundColor: "rgba(0, 212, 255, 0.1)" },
+  dripText: { color: colors.muted, fontSize: 13, fontWeight: "800" },
+  dripTextActive: { color: colors.text },
+  statusCard: { marginTop: spacing.md, flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingVertical: spacing.md },
+  statusDot: { width: 10, height: 10, borderRadius: 10 },
+  statusText: { color: colors.muted, flex: 1, fontSize: 13, lineHeight: 18 },
+  actionRow: { gap: spacing.sm, paddingBottom: spacing.md },
+  actionChip: { paddingHorizontal: spacing.md, paddingVertical: 11, borderRadius: 999, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.borderSoft },
+  actionChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  actionText: { color: colors.muted, fontSize: 12, fontWeight: "900" },
+  actionTextActive: { color: colors.white },
+  outputCard: { backgroundColor: "#0B1020" },
+  outputText: { color: colors.text, fontSize: 14, lineHeight: 22 },
+  sourceList: { gap: spacing.md },
+  retrievedCard: { padding: spacing.md },
+  sourceTitle: { color: colors.text, fontSize: 14, fontWeight: "900" },
+  sourceMeta: { color: colors.primary2, fontSize: 11, fontWeight: "800", marginTop: 4, textTransform: "capitalize" },
+  sourceExcerpt: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: spacing.sm },
+  libraryCard: { padding: spacing.md },
+  libraryTop: { flexDirection: "row", gap: spacing.md, alignItems: "flex-start" },
+  resetButton: { marginTop: spacing.xl, backgroundColor: colors.surface3, borderWidth: 1, borderColor: colors.border },
+  stepHeader: { flexDirection: "row", gap: spacing.md, alignItems: "flex-start", marginBottom: spacing.md, marginTop: spacing.sm },
+  stepNumber: { width: 30, height: 30, borderRadius: 30, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface3, borderWidth: 1, borderColor: colors.border },
+  stepNumberComplete: { backgroundColor: "rgba(39, 215, 153, 0.2)", borderColor: colors.success },
+  stepNumberText: { color: colors.primary2, fontWeight: "900", fontSize: 12 },
+  stepTitle: { color: colors.text, fontSize: 14, fontWeight: "900" },
+  stepBody: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 3 },
+  block: { borderTopWidth: 1, borderTopColor: colors.borderSoft, paddingTop: spacing.md, marginTop: spacing.md },
+  blockTitle: { color: colors.text, fontSize: 14, fontWeight: "900" },
+  blockBody: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 5 },
+  roleCard: { padding: spacing.md, backgroundColor: colors.surface },
+  pathStep: { padding: spacing.md },
+  pathStepComplete: { borderColor: colors.success },
+  progressOuter: { height: 9, backgroundColor: colors.surface3, borderRadius: 999, overflow: "hidden", marginTop: spacing.md, marginBottom: spacing.md },
+  progressInner: { height: 9, backgroundColor: colors.primary2, borderRadius: 999 },
 });
